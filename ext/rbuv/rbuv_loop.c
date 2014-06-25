@@ -80,7 +80,7 @@ VALUE rbuv_loop_s_default(VALUE klass) {
     rbuv_loop_t *rbuv_loop;
 
     rbuv_loop = malloc(sizeof(*rbuv_loop));
-    rbuv_loop->uv_handle = uv_loop_new();
+    rbuv_loop->uv_handle = uv_default_loop();
     rbuv_loop->is_default = 1;
 
     loop = Data_Wrap_Struct(klass, rbuv_loop_mark, rbuv_loop_free, rbuv_loop);
