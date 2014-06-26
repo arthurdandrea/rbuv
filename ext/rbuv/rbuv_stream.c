@@ -322,7 +322,7 @@ void _uv_stream_on_write_no_gvl(_uv_stream_on_write_arg_t *arg) {
     case T_NIL:
       break;
     case T_ARRAY:
-      rbuv_stream->cbs_on_write =  _r_u_vary_delete_same_object(rbuv_stream->cbs_on_write, cb_on_write);
+      rbuv_stream->cbs_on_write =  _rbuv_ary_delete_same_object(rbuv_stream->cbs_on_write, cb_on_write);
       break;
     default:
       rbuv_stream->cbs_on_write = Qnil;
