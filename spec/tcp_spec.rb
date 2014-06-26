@@ -93,23 +93,69 @@ describe Rbuv::Tcp do
     end
   end
 
-  it "#accept" do
-    expect(port_in_use?(60000)).to be false
+  context "#accept" do
+    context "with a client as a paramenter" do
+      it "does not raise an error" do
+        expect(port_in_use?(60000)).to be false
 
-    Rbuv.run do
-      tcp = Rbuv::Tcp.new
-      tcp.bind '127.0.0.1', 60000
+        Rbuv.run do
+          tcp = Rbuv::Tcp.new
+          tcp.bind '127.0.0.1', 60000
 
-      sock = nil
+          sock = nil
 
-      tcp.listen(10) do |s|
-        c = Rbuv::Tcp.new
-        expect { s.accept(c) }.not_to raise_error
-        sock.close
-        tcp.close
+          tcp.listen(10) do |s|
+            c = Rbuv::Tcp.new
+            expect { s.accept(c) }.not_to raise_error
+            sock.close
+            tcp.close
+          end
+
+          sock = TCPSocket.new '127.0.0.1', 60000
+        end
+      end
+    end
+
+    context "with no parameters" do
+      it "returns a Rbuv::Tcp" do
+        expect(port_in_use?(60000)).to be false
+
+        Rbuv.run do
+          tcp = Rbuv::Tcp.new
+          tcp.bind '127.0.0.1', 60000
+
+          sock = nil
+
+          tcp.listen(10) do |s|
+            client = s.accept
+            expect(client).to be_a Rbuv::Tcp
+            sock.close
+            tcp.close
+          end
+
+          sock = TCPSocket.new '127.0.0.1', 60000
+        end
       end
 
-      sock = TCPSocket.new '127.0.0.1', 60000
+      it "does not return self" do
+        expect(port_in_use?(60000)).to be false
+
+        Rbuv.run do
+          tcp = Rbuv::Tcp.new
+          tcp.bind '127.0.0.1', 60000
+
+          sock = nil
+
+          tcp.listen(10) do |s|
+            client = s.accept
+            expect(client).not_to be s
+            sock.close
+            tcp.close
+          end
+
+          sock = TCPSocket.new '127.0.0.1', 60000
+        end
+      end
     end
   end
 
