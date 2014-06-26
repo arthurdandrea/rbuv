@@ -196,12 +196,6 @@ describe Rbuv::Timer do
       end
       expect(@timer_fired).to be false
       expect(@close_fired).to be true
-
-      # make sure that the timer is closed before next spec
-      loop.run do
-        unrefd_timer.ref
-      end
-      expect(@timer_fired).to be false
     end
 
     # here we can use double, they are not leaking to other specs

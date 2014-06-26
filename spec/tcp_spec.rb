@@ -167,10 +167,17 @@ describe Rbuv::Tcp do
     it "affect #closing?" do
       loop.run do
         tcp = Rbuv::Tcp.new(loop)
-        tcp.close do
-          expect(tcp.closing?).to be true
-        end
+        tcp.close
         expect(tcp.closing?).to be true
+      end
+    end
+
+    it "affect #closed?" do
+      loop.run do
+        tcp = Rbuv::Tcp.new(loop)
+        tcp.close do
+          expect(tcp.closed?).to be true
+        end
       end
     end
 
