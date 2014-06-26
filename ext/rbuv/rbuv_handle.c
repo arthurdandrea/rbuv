@@ -67,9 +67,9 @@ VALUE rbuv_handle_close(VALUE self) {
 
 VALUE rbuv_handle_is_active(VALUE self) {
   rbuv_handle_t *rbuv_handle;
-  
+
   Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
-  
+
   return _rbuv_handle_is_active(rbuv_handle) ? Qtrue : Qfalse;
 }
 

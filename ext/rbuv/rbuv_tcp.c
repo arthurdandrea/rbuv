@@ -47,7 +47,7 @@ extern void __uv_stream_on_connection_no_gvl(uv_stream_t *uv_stream, int status)
 void Init_rbuv_tcp() {
   cRbuvTcp = rb_define_class_under(mRbuv, "Tcp", cRbuvStream);
   rb_define_alloc_func(cRbuvTcp, rbuv_tcp_alloc);
-  
+
   rb_define_method(cRbuvTcp, "bind", rbuv_tcp_bind, 2);
   //rb_define_method(cRbuvTcp, "bind6", rbuv_tcp_bind6, 2);
   rb_define_method(cRbuvTcp, "connect", rbuv_tcp_connect, 2);
@@ -65,14 +65,14 @@ VALUE rbuv_tcp_alloc(VALUE klass) {
   rbuv_tcp->cb_on_close = Qnil;
   rbuv_tcp->cb_on_connection = Qnil;
   rbuv_tcp->cb_on_read = Qnil;
-  
+
   tcp = Data_Wrap_Struct(klass, rbuv_tcp_mark, rbuv_tcp_free, rbuv_tcp);
   rbuv_tcp->uv_handle->data = (void *)tcp;
-  
+
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p, tcp: %s",
                         rbuv_tcp, rbuv_tcp->uv_handle,
                         RSTRING_PTR(rb_inspect(tcp)));
-  
+
   return tcp;
 }
 
@@ -114,19 +114,19 @@ VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port) {
   int uv_port;
   rbuv_tcp_t *rbuv_tcp;
   struct sockaddr_in bind_addr;
-  
+
   uv_ip = RSTRING_PTR(ip);
   uv_port = FIX2INT(port);
-  
+
   bind_addr = uv_ip4_addr(uv_ip, uv_port);
-  
+
   Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
   RBUV_CHECK_UV_RETURN(uv_tcp_bind(rbuv_tcp->uv_handle, bind_addr));
-  
+
   RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
                         rbuv_tcp->uv_handle);
-  
+
   return self;
 }
 
@@ -170,6 +170,6 @@ void _uv_tcp_on_connect_no_gvl(_uv_tcp_on_connect_arg_t *arg) {
   int status = arg->status;
 
   __uv_stream_on_connection_no_gvl(uv_connect->handle, status);
-  
+
   free(uv_connect);
 }
