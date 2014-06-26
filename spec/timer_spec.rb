@@ -134,7 +134,7 @@ describe Rbuv::Timer do
       context "won't segfault" do
         it "when repeat == 0" do
           loop.run do
-            Rbuv::Timer.start(0, 0) {}
+            Rbuv::Timer.start(loop, 0, 0) {}
           end
           GC.start
         end
@@ -144,7 +144,7 @@ describe Rbuv::Timer do
           count_limit = 10
 
           loop.run do
-            Rbuv::Timer.start 0, 1 do |timer|
+            Rbuv::Timer.start loop, 0, 1 do |timer|
               GC.start
               count += 1
               if count >= count_limit
