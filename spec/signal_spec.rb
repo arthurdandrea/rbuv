@@ -2,6 +2,7 @@ require 'spec_helper'
 
 describe Rbuv::Signal do
   let(:loop) { Rbuv::Loop.new }
+  after { loop.dispose }
 
   it "#start" do
     block = double

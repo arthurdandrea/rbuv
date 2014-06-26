@@ -35,8 +35,15 @@ void Init_rbuv_handle() {
 // if it has not been closed before
 void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle) {
   rbuv_handle->loop = Qnil;
-  if (!_rbuv_handle_is_closing(rbuv_handle)) {
-    uv_close(rbuv_handle->uv_handle, NULL);
+  if (rbuv_handle->uv_handle != NULL) {
+    if (_rbuv_handle_is_closing(rbuv_handle)) {
+      rb_warn("The GC freed Rbuv::Loop before the Rbuv::Handle#close completed. Consider using Rbuv::Loop#dispose\n");
+    } else {
+      rb_warn("The GC freed Rbuv::Loop before the Rbuv::Handle#close is called. Consider using Rbuv::Loop#dispose\n");
+      uv_close(rbuv_handle->uv_handle, NULL);
+      rbuv_handle->uv_handle = NULL;
+      free(rbuv_handle->uv_handle);
+    }
   }
 }
 
@@ -44,16 +51,24 @@ void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle) {
 void rbuv_handle_free(rbuv_handle_t *rbuv_handle) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_handle: %p, uv_handle: %p", rbuv_handle, rbuv_handle->uv_handle);
   if ((TYPE(rbuv_handle->loop) != T_NONE) && (rbuv_handle->loop != Qnil)) {
-    
+
     // dont call if the loop is about to be GC'd
     if (TYPE(rbuv_handle->loop) != T_ZOMBIE) {
       rbuv_loop_t *rbuv_loop;
       rbuv_loop = (rbuv_loop_t*)DATA_PTR(rbuv_handle->loop);
       rbuv_loop_unregister_handle(rbuv_loop, rbuv_handle);
     }
-    if (!_rbuv_handle_is_closing(rbuv_handle)) {
-      uv_close(rbuv_handle->uv_handle, NULL);
+    if (rbuv_handle->uv_handle != NULL) {
+      if (_rbuv_handle_is_closing(rbuv_handle)) {
+        rb_warn("The GC freed the Rbuv::Handle before #close completed.Consider using Rbuv::Loop#dispose\n");
+      } else {
+        rb_warn("The GC freed the Rbuv::Handle before #close is called.Consider using Rbuv::Loop#dispose\n");
+        uv_close(rbuv_handle->uv_handle, NULL);
+      }
     }
+  }
+  if (rbuv_handle->uv_handle != NULL) {
+    free(rbuv_handle->uv_handle);
   }
   free(rbuv_handle);
 }
@@ -61,6 +76,9 @@ void rbuv_handle_free(rbuv_handle_t *rbuv_handle) {
 VALUE rbuv_handle_ref(VALUE self) {
   rbuv_handle_t *rbuv_handle;
   Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
+  if (rbuv_handle->uv_handle == NULL) {
+    rb_raise(eRbuvError, "Handle is closed");
+  }
   uv_ref(rbuv_handle->uv_handle);
   return self;
 }
@@ -68,6 +86,9 @@ VALUE rbuv_handle_ref(VALUE self) {
 VALUE rbuv_handle_unref(VALUE self) {
   rbuv_handle_t *rbuv_handle;
   Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
+  if (rbuv_handle->uv_handle == NULL) {
+    rb_raise(eRbuvError, "Handle is closed");
+  }
   uv_unref(rbuv_handle->uv_handle);
   return self;
 }
@@ -83,9 +104,10 @@ VALUE rbuv_handle_close(VALUE self) {
   }
 
   Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
-
+  if (rbuv_handle->uv_handle == NULL) {
+    rb_raise(eRbuvError, "Handle is closed");
+  }
   _rbuv_handle_close(rbuv_handle, block);
-
   return Qnil;
 }
 
@@ -94,6 +116,9 @@ VALUE rbuv_handle_is_active(VALUE self) {
 
   Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
 
+  if (rbuv_handle->uv_handle == NULL) {
+    rb_raise(eRbuvError, "Handle is closed");
+  }
   return _rbuv_handle_is_active(rbuv_handle) ? Qtrue : Qfalse;
 }
 
@@ -102,6 +127,9 @@ VALUE rbuv_handle_is_closing(VALUE self) {
 
   Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
 
+  if (rbuv_handle->uv_handle == NULL) {
+    rb_raise(eRbuvError, "Handle is closed");
+  }
   return _rbuv_handle_is_closing(rbuv_handle) ? Qtrue : Qfalse;
 }
 
@@ -152,6 +180,13 @@ void _uv_handle_on_close_no_gvl(_uv_handle_on_close_arg_t *arg) {
                         uv_handle, RSTRING_PTR(rb_inspect(handle)));
 
   Data_Get_Struct(handle, rbuv_handle_t, rbuv_handle);
+  free(rbuv_handle->uv_handle);
+  rbuv_handle->uv_handle = NULL;
+
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(rbuv_handle->loop, rbuv_loop_t, rbuv_loop);
+  rbuv_loop_unregister_handle(rbuv_loop, rbuv_handle);
+  rbuv_handle->loop = Qnil;
 
   on_close = rbuv_handle->cb_on_close;
   rbuv_handle->cb_on_close = Qnil;

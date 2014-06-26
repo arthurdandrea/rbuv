@@ -18,9 +18,11 @@ rescue Errno::ECONNREFUSED
 end
 
 describe Rbuv::Tcp do
-  it { is_expected.to be_a_kind_of Rbuv::Stream }
-
   let(:loop) { Rbuv::Loop.new }
+  after { loop.dispose }
+  subject { Rbuv::Tcp.new(loop) }
+
+  it { is_expected.to be_a_kind_of Rbuv::Stream }
 
   it "#bind" do
     expect(port_in_use?(60000)).to be false

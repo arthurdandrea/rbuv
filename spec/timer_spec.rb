@@ -1,8 +1,11 @@
 require 'spec_helper'
 
 describe Rbuv::Timer do
-  it { is_expected.to be_a_kind_of Rbuv::Handle }
   let(:loop) { Rbuv::Loop.new }
+  after { loop.dispose }
+  subject { Rbuv::Timer.new(loop) }
+
+  it { is_expected.to be_a_kind_of Rbuv::Handle }
 
   context "when timeout == 0" do
     context "#start" do
