@@ -6,11 +6,14 @@ struct rbuv_stream_s {
   VALUE cb_on_close;
   VALUE cb_on_connection;
   VALUE cb_on_read;
+  VALUE cbs_on_write;
 };
 
 typedef struct {
   uv_write_t req;
   uv_buf_t buf;
+  rbuv_stream_t *rbuv_stream;
+  VALUE cb_on_write;
 } rbuv_write_req_t;
 
 typedef struct {
@@ -25,8 +28,10 @@ typedef struct {
 } _uv_stream_on_read_arg_t;
 
 typedef struct {
-  uv_write_t *uv_req;
+  uv_stream_t *uv_stream;
   int status;
+  VALUE cb_on_write;
+  rbuv_stream_t *rbuv_stream;
 } _uv_stream_on_write_arg_t;
 
 VALUE cRbuvStream;
@@ -52,6 +57,8 @@ static void _uv_stream_on_read(uv_stream_t *stream, ssize_t nread, uv_buf_t buf)
 static void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg);
 static void _uv_stream_on_write(uv_write_t *req, int status);
 static void _uv_stream_on_write_no_gvl(_uv_stream_on_write_arg_t *arg);
+static VALUE _rbuv_ary_delete_same_object(VALUE ary, VALUE obj);
+static VALUE _rbuv_ary_new_from_2_args(VALUE elem1, VALUE elem2);
 
 void Init_rbuv_stream() {
   cRbuvStream = rb_define_class_under(mRbuv, "Stream", cRbuvHandle);
@@ -161,17 +168,44 @@ VALUE rbuv_stream_read_stop(VALUE self) {
 VALUE rbuv_stream_write(VALUE self, VALUE data) {
   rbuv_stream_t *rbuv_stream;
   rbuv_write_req_t *req;
+  rb_need_block();
+  VALUE block = rb_block_proc();
 
   Data_Get_Struct(self, rbuv_stream_t, rbuv_stream);
 
+  RBUV_DEBUG_LOG_DETAIL("self: %s, block: %s, rbuv_server: %p, uv_handle: %p",
+                        RSTRING_PTR(rb_inspect(self)),
+                        RSTRING_PTR(rb_inspect(block)),
+                        rbuv_stream,
+                        rbuv_stream->uv_handle);
+
+
   req = malloc(sizeof(*req));
+  req->cb_on_write = rb_block_proc();
+  switch(TYPE(rbuv_stream->cbs_on_write)) {
+    case T_DATA: // Proc
+      rbuv_stream->cbs_on_write = _rbuv_ary_new_from_2_args(req->cb_on_write, rbuv_stream->cbs_on_write);
+      break;
+    case T_NIL:
+      rbuv_stream->cbs_on_write = req->cb_on_write;
+      break;
+    case T_ARRAY:
+      rb_ary_push(rbuv_stream->cbs_on_write, req->cb_on_write);
+      break;
+    default:
+      rb_raise(rb_eTypeError, "not valid value");
+      return Qnil;
+  }
+  RBUV_DEBUG_LOG_DETAIL("cbs_on_write: %s",
+                        RSTRING_PTR(rb_inspect(rbuv_stream->cbs_on_write)));
+  req->rbuv_stream = rbuv_stream;
 
   req->buf = uv_buf_init((char *)malloc(RSTRING_LEN(data)), (unsigned int)RSTRING_LEN(data));
   memcpy(req->buf.base, RSTRING_PTR(data), RSTRING_LEN(data));
 
-  uv_write(&req->req, rbuv_stream->uv_handle, &req->buf, 1, _uv_stream_on_write);
+  RBUV_CHECK_UV_RETURN(uv_write(&req->req, rbuv_stream->uv_handle, &req->buf, 1, _uv_stream_on_write), rbuv_stream->uv_handle->loop);
 
-  return data;
+  return self;
 }
 
 void _uv_stream_on_connection(uv_stream_t *uv_stream, int status) {
@@ -260,20 +294,72 @@ void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
 }
 
 void _uv_stream_on_write(uv_write_t *uv_req, int status) {
-  _uv_stream_on_write_arg_t arg = { .uv_req = uv_req, .status = status };
-  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)_uv_stream_on_write_no_gvl, &arg);
+  rbuv_write_req_t *rbuv_req = RBUV_CONTAINTER_OF(uv_req, rbuv_write_req_t, req);
+
+  _uv_stream_on_write_arg_t arg = {
+    .rbuv_stream = rbuv_req->rbuv_stream,
+    .uv_stream = uv_req->handle,
+    .status = status,
+    .cb_on_write = rbuv_req->cb_on_write};
+
+  if (rbuv_req->buf.base != NULL) {
+    free(rbuv_req->buf.base);
+  }
+  free(rbuv_req);
+rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)_uv_stream_on_write_no_gvl, &arg);
 }
 
 void _uv_stream_on_write_no_gvl(_uv_stream_on_write_arg_t *arg) {
-  uv_write_t *uv_req = arg->uv_req;
-  int status = arg->status;
-  rbuv_write_req_t *rbuv_req;
-  RBUV_DEBUG_LOG("req: %p, status: %d", uv_req, status);
+  VALUE cb_on_write = arg->cb_on_write;
+  uv_stream_t *uv_stream = arg->uv_stream;
+  rbuv_stream_t *rbuv_stream = arg->rbuv_stream;
 
-  rbuv_req = RBUV_CONTAINTER_OF(uv_req, rbuv_write_req_t, req);
+  VALUE error = Qnil;
+  RBUV_DEBUG_LOG_DETAIL("cbs_on_write: %s",
+                      RSTRING_PTR(rb_inspect(rbuv_stream->cbs_on_write)));
 
-  free(rbuv_req->buf.base);
-  free(rbuv_req);
+  switch(TYPE(rbuv_stream->cbs_on_write)) {
+    case T_NIL:
+      break;
+    case T_ARRAY:
+      rbuv_stream->cbs_on_write =  _r_u_vary_delete_same_object(rbuv_stream->cbs_on_write, cb_on_write);
+      break;
+    default:
+      rbuv_stream->cbs_on_write = Qnil;
+      break;
+  }
 
-  RBUV_CHECK_UV_RETURN(status, uv_req->handle->loop);
+  if ((arg->status < 0) && (error == Qnil)) {
+    uv_err_t err = uv_last_error(uv_stream->loop);
+    error = rb_exc_new2(eRbuvError, uv_strerror(err));
+  }
+  RBUV_DEBUG_LOG_DETAIL("cb_on_write: %s, cbs_on_write: %s, error: %s",
+                      RSTRING_PTR(rb_inspect(cb_on_write)),
+                      RSTRING_PTR(rb_inspect(rbuv_stream->cbs_on_write)),
+                      RSTRING_PTR(rb_inspect(error)));
+
+  rb_funcall(cb_on_write, id_call, 1, error);
+}
+
+
+VALUE _rbuv_ary_delete_same_object(VALUE ary, VALUE obj) {
+  long i;
+  for (i = 0; i < RARRAY_LEN(ary); i++) {
+    if (rb_ary_entry(ary, i) == obj) {
+      rb_ary_delete_at(ary, i);
+      break;
+    }
+  }
+  return ary;
+}
+
+VALUE _rbuv_ary_new_from_2_args(VALUE elem1, VALUE elem2) {
+#ifdef RBUV_RBX
+  VALUE ary = rb_ary_new();
+  rb_ary_push(ary, elem1);
+  rb_ary_push(ary, elem2);
+  return ary;
+#else
+  return rb_ary_new_from_args(2, elem1, elem2);
+#endif
 }
