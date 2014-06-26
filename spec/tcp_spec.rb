@@ -20,13 +20,15 @@ end
 describe Rbuv::Tcp do
   it { is_expected.to be_a_kind_of Rbuv::Stream }
 
+  let(:loop) { Rbuv::Loop.new }
+
   it "#bind" do
     expect(port_in_use?(60000)).to be false
 
-    Rbuv.run do
+    loop.run do
       skip "this spec does't pass on linux machines, see #1 on github"
       begin
-        tcp = Rbuv::Tcp.new
+        tcp = Rbuv::Tcp.new(loop)
         tcp.bind '127.0.0.1', 60000
 
         expect(port_in_use?(60000)).to be true
@@ -42,9 +44,9 @@ describe Rbuv::Tcp do
     it "when address not in use" do
       expect(port_in_use?(60000)).to be false
 
-      Rbuv.run do
+      loop.run do
         begin
-          tcp = Rbuv::Tcp.new
+          tcp = Rbuv::Tcp.new(loop)
           tcp.bind '127.0.0.1', 60000
           tcp.listen(10) { Rbuv.stop_loop }
 
@@ -60,11 +62,11 @@ describe Rbuv::Tcp do
     it "when address already in use" do
       expect(port_in_use?(60000)).to be false
 
-      Rbuv.run do
+      loop.run do
         begin
           s = TCPServer.new '127.0.0.1', 60000
 
-          tcp = Rbuv::Tcp.new
+          tcp = Rbuv::Tcp.new(loop)
           tcp.bind '127.0.0.1', 60000
           expect { tcp.listen(10) {} }.to raise_error
         ensure
@@ -78,8 +80,8 @@ describe Rbuv::Tcp do
       on_connection = double
       expect(on_connection).to receive(:call).once
 
-      Rbuv.run do
-        tcp = Rbuv::Tcp.new
+      loop.run do
+        tcp = Rbuv::Tcp.new(loop)
         tcp.bind '127.0.0.1', 60000
 
         tcp.listen(10) do
@@ -98,14 +100,14 @@ describe Rbuv::Tcp do
       it "does not raise an error" do
         expect(port_in_use?(60000)).to be false
 
-        Rbuv.run do
-          tcp = Rbuv::Tcp.new
+        loop.run do
+          tcp = Rbuv::Tcp.new(loop)
           tcp.bind '127.0.0.1', 60000
 
           sock = nil
 
           tcp.listen(10) do |s|
-            c = Rbuv::Tcp.new
+            c = Rbuv::Tcp.new(loop)
             expect { s.accept(c) }.not_to raise_error
             sock.close
             tcp.close
@@ -120,8 +122,8 @@ describe Rbuv::Tcp do
       it "returns a Rbuv::Tcp" do
         expect(port_in_use?(60000)).to be false
 
-        Rbuv.run do
-          tcp = Rbuv::Tcp.new
+        loop.run do
+          tcp = Rbuv::Tcp.new(loop)
           tcp.bind '127.0.0.1', 60000
 
           sock = nil
@@ -140,8 +142,8 @@ describe Rbuv::Tcp do
       it "does not return self" do
         expect(port_in_use?(60000)).to be false
 
-        Rbuv.run do
-          tcp = Rbuv::Tcp.new
+        loop.run do
+          tcp = Rbuv::Tcp.new(loop)
           tcp.bind '127.0.0.1', 60000
 
           sock = nil
@@ -161,8 +163,8 @@ describe Rbuv::Tcp do
 
   context "#close" do
     it "affect #closing?" do
-      Rbuv.run do
-        tcp = Rbuv::Tcp.new
+      loop.run do
+        tcp = Rbuv::Tcp.new(loop)
         tcp.close do
           expect(tcp.closing?).to be true
         end
@@ -174,8 +176,8 @@ describe Rbuv::Tcp do
       on_close = double
       expect(on_close).to receive(:call).once
 
-      Rbuv.run do
-        tcp = Rbuv::Tcp.new
+      loop.run do
+        tcp = Rbuv::Tcp.new(loop)
 
         tcp.close do
           on_close.call
@@ -190,8 +192,8 @@ describe Rbuv::Tcp do
       no_on_close = double
       expect(no_on_close).not_to receive(:call)
 
-      Rbuv.run do
-        tcp = Rbuv::Tcp.new
+      loop.run do
+        tcp = Rbuv::Tcp.new(loop)
 
         tcp.close do
           on_close.call
@@ -205,8 +207,8 @@ describe Rbuv::Tcp do
 
     context "#connect" do
       it "when server does not exist" do
-        Rbuv.run do
-          c = Rbuv::Tcp.new
+        loop.run do
+          c = Rbuv::Tcp.new(loop)
           c.connect('127.0.0.1', 60000) do |client, error|
             expect(error).to be_a_kind_of Rbuv::Error
             c.close
@@ -221,8 +223,8 @@ describe Rbuv::Tcp do
         on_connect = double
         expect(on_connect).to receive(:call).once
 
-        Rbuv.run do
-          c = Rbuv::Tcp.new
+        loop.run do
+          c = Rbuv::Tcp.new(loop)
           c.connect('127.0.0.1', 60000) do
             on_connect.call
             c.close

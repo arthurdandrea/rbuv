@@ -1,9 +1,5 @@
 #include "rbuv_loop.h"
 
-struct rbuv_handle_s {
-  uv_handle_t *uv_handle;
-};
-
 typedef struct {
   uv_loop_t* loop;
   int mode;
@@ -16,7 +12,6 @@ static VALUE rbuv_loop_run(VALUE loop);
 static VALUE rbuv_loop_stop(VALUE loop);
 static VALUE rbuv_loop_run_once(VALUE loop);
 static VALUE rbuv_loop_run_nowait(VALUE loop);
-static VALUE rbuv_loop_s_default(VALUE klass);
 
 /* Allocator/deallocator */
 static VALUE rbuv_loop_alloc(VALUE klass);
@@ -24,6 +19,7 @@ static void rbuv_loop_mark(rbuv_loop_t *rbuv_loop);
 static void rbuv_loop_free(rbuv_loop_t *rbuv_loop);
 
 /* Private methods */
+static int rbuv_loop_free_foreach_handle(VALUE key, VALUE handle, void *ptr);
 static void _rbuv_loop_run(VALUE self, uv_run_mode mode);
 static void _rbuv_loop_run_no_gvl(_rbuv_loop_run_arg_t *arg);
 
@@ -43,6 +39,7 @@ VALUE rbuv_loop_alloc(VALUE klass) {
   VALUE loop;
 
   rbuv_loop = malloc(sizeof(*rbuv_loop));
+  rbuv_loop->handles = rb_hash_new();
   rbuv_loop->uv_handle = uv_loop_new();
   rbuv_loop->is_default = 0;
 
@@ -61,11 +58,23 @@ void rbuv_loop_mark(rbuv_loop_t *rbuv_loop) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_loop: %p, uv_handle: %p, self: %lx",
                         rbuv_loop, rbuv_loop->uv_handle,
                         (VALUE)rbuv_loop->uv_handle->data);
+  rb_gc_mark(rbuv_loop->handles);
+}
+
+int rbuv_loop_free_foreach_handle(VALUE key, VALUE handle, void *ptr) {
+  // dont call if the object have already been GC'd
+  if (TYPE(handle) != T_NONE) {
+    rbuv_handle_t *rbuv_handle = (rbuv_handle_t *)DATA_PTR(handle);
+    rbuv_handle_unregister_loop(rbuv_handle);
+  }
+  return ST_DELETE; // ST_DELETE
 }
 
 void rbuv_loop_free(rbuv_loop_t *rbuv_loop) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_loop: %p, uv_handle: %p", rbuv_loop, rbuv_loop->uv_handle);
+  RBUV_DEBUG_LOG_DETAIL("handles: %d", RHASH_SIZE(rbuv_loop->handles));
 
+  rb_hash_foreach(rbuv_loop->handles, rbuv_loop_free_foreach_handle, NULL);
   if (rbuv_loop->is_default == 0) {
     uv_loop_delete(rbuv_loop->uv_handle);
   }
@@ -80,6 +89,7 @@ VALUE rbuv_loop_s_default(VALUE klass) {
     rbuv_loop_t *rbuv_loop;
 
     rbuv_loop = malloc(sizeof(*rbuv_loop));
+    rbuv_loop->handles = rb_hash_new();
     rbuv_loop->uv_handle = uv_default_loop();
     rbuv_loop->is_default = 1;
 
@@ -117,6 +127,18 @@ VALUE rbuv_loop_run_once(VALUE self) {
 VALUE rbuv_loop_run_nowait(VALUE self) {
   _rbuv_loop_run(self, UV_RUN_NOWAIT);
   return Qnil;
+}
+
+void rbuv_loop_register_handle(rbuv_loop_t *rbuv_loop, void *rbuv_handle, VALUE handle) {
+  long pointer = (long)rbuv_handle;
+  RBUV_DEBUG_LOG_DETAIL("registering %lx", pointer);
+  rb_hash_aset(rbuv_loop->handles, LONG2FIX(pointer), handle);
+}
+
+void rbuv_loop_unregister_handle(rbuv_loop_t *rbuv_loop, void *rbuv_handle) {
+  long pointer = (long)rbuv_handle;
+  RBUV_DEBUG_LOG_DETAIL("unregistering %lx from %lp", pointer, rbuv_loop);
+  rb_hash_delete(rbuv_loop->handles, LONG2FIX(pointer));
 }
 
 void _rbuv_loop_run(VALUE self, uv_run_mode mode) {

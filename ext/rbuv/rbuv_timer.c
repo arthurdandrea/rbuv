@@ -4,6 +4,7 @@ VALUE cRbuvTimer;
 
 struct rbuv_timer_s {
   uv_timer_t *uv_handle;
+  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_timeout;
 };
@@ -18,7 +19,7 @@ static VALUE rbuv_timer_s_new(int argc, VALUE *argv, VALUE klass);
 static void rbuv_timer_mark(rbuv_timer_t *rbuv_timer);
 static void rbuv_timer_free(rbuv_timer_t *rbuv_timer);
 /* Private Allocatator */
-static VALUE rbuv_timer_alloc(VALUE klass, uv_loop_t *uv_loop);
+static VALUE rbuv_timer_alloc(VALUE klass, VALUE loop);
 
 /* Methods */
 static VALUE rbuv_timer_start(VALUE self, VALUE timeout, VALUE repeat);
@@ -43,31 +44,29 @@ void Init_rbuv_timer() {
 
 VALUE rbuv_timer_s_new(int argc, VALUE *argv, VALUE klass) {
   VALUE loop;
-  uv_loop_t *uv_loop;
   rb_scan_args(argc, argv, "01", &loop);
-
   if (loop == Qnil) {
-    uv_loop = uv_default_loop();
-  } else {
-    rbuv_loop_t *rbuv_loop;
-    Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
-    uv_loop = rbuv_loop->uv_handle;
+    loop = rbuv_loop_s_default(cRbuvLoop);
   }
-  return rbuv_timer_alloc(klass, uv_loop);
+  return rbuv_timer_alloc(klass, loop);
 }
 
-VALUE rbuv_timer_alloc(VALUE klass, uv_loop_t *uv_loop) {
+VALUE rbuv_timer_alloc(VALUE klass, VALUE loop) {
   rbuv_timer_t *rbuv_timer;
+  rbuv_loop_t *rbuv_loop;
   VALUE timer;
 
+  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   rbuv_timer = malloc(sizeof(*rbuv_timer));
   rbuv_timer->uv_handle = malloc(sizeof(*rbuv_timer->uv_handle));
-  uv_timer_init(uv_loop, rbuv_timer->uv_handle);
+  uv_timer_init(rbuv_loop->uv_handle, rbuv_timer->uv_handle);
   rbuv_timer->cb_on_close = Qnil;
   rbuv_timer->cb_on_timeout = Qnil;
+  rbuv_timer->loop = loop;
 
   timer = Data_Wrap_Struct(klass, rbuv_timer_mark, rbuv_timer_free, rbuv_timer);
   rbuv_timer->uv_handle->data = (void *)timer;
+  rbuv_loop_register_handle(rbuv_loop, rbuv_timer, timer);
 
   return timer;
 }
@@ -81,10 +80,8 @@ void rbuv_timer_mark(rbuv_timer_t *rbuv_timer) {
 void rbuv_timer_free(rbuv_timer_t *rbuv_timer) {
   assert(rbuv_timer);
   RBUV_DEBUG_LOG_DETAIL("rbuv_timer: %p, uv_handle: %p", rbuv_timer, rbuv_timer->uv_handle);
-  if (!_rbuv_handle_is_closing((rbuv_handle_t *)rbuv_timer)) {
-    uv_close((uv_handle_t *)rbuv_timer->uv_handle, NULL);
-  }
-  free(rbuv_timer);
+
+  rbuv_handle_free((rbuv_handle_t *)rbuv_timer);
 }
 
 /**

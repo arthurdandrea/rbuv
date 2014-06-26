@@ -2,6 +2,7 @@
 
 struct rbuv_tcp_s {
   uv_tcp_t *uv_handle;
+  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_connection;
   VALUE cb_on_read;
@@ -19,7 +20,7 @@ static VALUE rbuv_tcp_s_new(int argc, VALUE *argv, VALUE klass);
 static void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp);
 static void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp);
 /* Private Allocatator */
-static VALUE rbuv_tcp_alloc(VALUE klass, uv_loop_t* uv_loop);
+static VALUE rbuv_tcp_alloc(VALUE klass, VALUE loop);
 
 /* Methods */
 /*
@@ -60,33 +61,31 @@ void Init_rbuv_tcp() {
 
 VALUE rbuv_tcp_s_new(int argc, VALUE *argv, VALUE klass) {
   VALUE loop;
-  uv_loop_t *uv_loop;
   rb_scan_args(argc, argv, "01", &loop);
-
   if (loop == Qnil) {
-    uv_loop = uv_default_loop();
-  } else {
-    rbuv_loop_t *rbuv_loop;
-    Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
-    uv_loop = rbuv_loop->uv_handle;
+    loop = rbuv_loop_s_default(cRbuvLoop);
   }
-  return rbuv_tcp_alloc(klass, uv_loop);
+  return rbuv_tcp_alloc(klass, loop);
 }
 
-VALUE rbuv_tcp_alloc(VALUE klass, uv_loop_t* uv_loop) {
+VALUE rbuv_tcp_alloc(VALUE klass, VALUE loop) {
   rbuv_tcp_t *rbuv_tcp;
+  rbuv_loop_t *rbuv_loop;
   VALUE tcp;
 
+  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   rbuv_tcp = malloc(sizeof(*rbuv_tcp));
   rbuv_tcp->uv_handle = malloc(sizeof(*rbuv_tcp->uv_handle));
-  uv_tcp_init(uv_loop, rbuv_tcp->uv_handle);
+  uv_tcp_init(rbuv_loop->uv_handle, rbuv_tcp->uv_handle);
   rbuv_tcp->cb_on_close = Qnil;
   rbuv_tcp->cb_on_connection = Qnil;
   rbuv_tcp->cb_on_read = Qnil;
+  rbuv_tcp->loop = loop;
+
 
   tcp = Data_Wrap_Struct(klass, rbuv_tcp_mark, rbuv_tcp_free, rbuv_tcp);
   rbuv_tcp->uv_handle->data = (void *)tcp;
-
+  rbuv_loop_register_handle(rbuv_loop, rbuv_tcp, tcp);
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p, tcp: %s",
                         rbuv_tcp, rbuv_tcp->uv_handle,
                         RSTRING_PTR(rb_inspect(tcp)));
@@ -102,16 +101,13 @@ void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp) {
   rb_gc_mark(rbuv_tcp->cb_on_close);
   rb_gc_mark(rbuv_tcp->cb_on_connection);
   rb_gc_mark(rbuv_tcp->cb_on_read);
+  rb_gc_mark(rbuv_tcp->loop);
 }
 
 void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p", rbuv_tcp, rbuv_tcp->uv_handle);
 
-  if (!_rbuv_handle_is_closing((rbuv_handle_t *)rbuv_tcp)) {
-    uv_close((uv_handle_t *)rbuv_tcp->uv_handle, NULL);
-  }
-
-  free(rbuv_tcp);
+  rbuv_handle_free((rbuv_handle_t *)rbuv_tcp);
 }
 
 VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self) {
@@ -120,7 +116,7 @@ VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self) {
   if (client == Qnil) {
     rbuv_tcp_t *rbuv_tcp;
     Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
-    client = rbuv_tcp_alloc(rb_class_of(self), rbuv_tcp->uv_handle->loop);
+    client = rbuv_tcp_alloc(rb_class_of(self), rbuv_tcp->loop);
     VALUE super_argv[1] = { client };
     rb_call_super(1, super_argv);
     return client;

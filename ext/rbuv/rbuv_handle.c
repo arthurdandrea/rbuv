@@ -1,10 +1,5 @@
 #include "rbuv_handle.h"
 
-struct rbuv_handle_s {
-  uv_handle_t *uv_handle;
-  VALUE cb_on_close;
-};
-
 typedef struct {
   uv_handle_t *uv_handle;
 } _uv_handle_on_close_arg_t;
@@ -32,6 +27,35 @@ void Init_rbuv_handle() {
   rb_define_method(cRbuvHandle, "close", rbuv_handle_close, 0);
   rb_define_method(cRbuvHandle, "active?", rbuv_handle_is_active, 0);
   rb_define_method(cRbuvHandle, "closing?", rbuv_handle_is_closing, 0);
+}
+
+// this is called when the ruby CG is freeing a Rbuv::Loop
+// the loop in turn call this method for each associated handle, here we remove
+// any reference to the dying loop, for libuv happiness we also close the handle
+// if it has not been closed before
+void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle) {
+  rbuv_handle->loop = Qnil;
+  if (!_rbuv_handle_is_closing(rbuv_handle)) {
+    uv_close(rbuv_handle->uv_handle, NULL);
+  }
+}
+
+// this is called when the ruby CG is freeing a Rbuv::Handle
+void rbuv_handle_free(rbuv_handle_t *rbuv_handle) {
+  RBUV_DEBUG_LOG_DETAIL("rbuv_handle: %p, uv_handle: %p", rbuv_handle, rbuv_handle->uv_handle);
+  if ((TYPE(rbuv_handle->loop) != T_NONE) && (rbuv_handle->loop != Qnil)) {
+    
+    // dont call if the loop is about to be GC'd
+    if (TYPE(rbuv_handle->loop) != T_ZOMBIE) {
+      rbuv_loop_t *rbuv_loop;
+      rbuv_loop = (rbuv_loop_t*)DATA_PTR(rbuv_handle->loop);
+      rbuv_loop_unregister_handle(rbuv_loop, rbuv_handle);
+    }
+    if (!_rbuv_handle_is_closing(rbuv_handle)) {
+      uv_close(rbuv_handle->uv_handle, NULL);
+    }
+  }
+  free(rbuv_handle);
 }
 
 VALUE rbuv_handle_ref(VALUE self) {

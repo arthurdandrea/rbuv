@@ -2,16 +2,17 @@ require 'spec_helper'
 
 describe Rbuv::Timer do
   it { is_expected.to be_a_kind_of Rbuv::Handle }
+  let(:loop) { Rbuv::Loop.new }
 
   context "when timeout == 0" do
     context "#start" do
       it "when repeat == 0" do
-        timer = Rbuv::Timer.new
+        timer = Rbuv::Timer.new(loop)
 
         block = double
         expect(block).to receive(:call).once
 
-        Rbuv.run do
+        loop.run do
           timer.start 0, 0 do
             block.call
           end
@@ -19,7 +20,7 @@ describe Rbuv::Timer do
       end
 
       it "when repeat != 0" do
-        timer = Rbuv::Timer.new
+        timer = Rbuv::Timer.new(loop)
 
         block = double
         count_limit = 10
@@ -27,7 +28,7 @@ describe Rbuv::Timer do
 
         count = 0
 
-        Rbuv.run do
+        loop.run do
           timer.start 0, 1 do |t|
             block.call
             count += 1
@@ -40,12 +41,12 @@ describe Rbuv::Timer do
     end # context "#start"
 
     it "#stop" do
-      timer = Rbuv::Timer.new
+      timer = Rbuv::Timer.new(loop)
 
       block = double
       expect(block).to receive(:call).once
 
-      Rbuv.run do
+      loop.run do
         timer.start 0, 1 do |t|
           block.call
           t.stop
@@ -55,9 +56,9 @@ describe Rbuv::Timer do
 
     context "#active?" do
       it "should be false" do
-        timer = Rbuv::Timer.new
+        timer = Rbuv::Timer.new(loop)
 
-        Rbuv.run do
+        loop.run do
           timer.start 0, 0 do |t|
             expect(t.active?).to be false
           end
@@ -65,9 +66,9 @@ describe Rbuv::Timer do
       end
 
       it "should be true" do
-        timer = Rbuv::Timer.new
+        timer = Rbuv::Timer.new(loop)
 
-        Rbuv.run do
+        loop.run do
           timer.start 0, 1 do |t|
             expect(t.active?).to be true
             t.stop
@@ -79,9 +80,9 @@ describe Rbuv::Timer do
     context "#repeat" do
       [0, 10, 100].each do |repeat|
         it "should eq #{repeat}" do
-          timer = Rbuv::Timer.new
+          timer = Rbuv::Timer.new(loop)
 
-          Rbuv.run do
+          loop.run do
             timer.start 0, repeat do |t|
               expect(t.repeat).to eq repeat
               t.stop
@@ -94,9 +95,9 @@ describe Rbuv::Timer do
     context "#repeat=" do
       [0, 10, 100].each do |repeat|
         it "should eq #{repeat}" do
-          timer = Rbuv::Timer.new
+          timer = Rbuv::Timer.new(loop)
 
-          Rbuv.run do
+          loop.run do
             timer.start 0, 0 do |t|
               t.repeat = repeat
             end
@@ -112,8 +113,8 @@ describe Rbuv::Timer do
           block = double
           expect(block).to receive(:call).once
 
-          Rbuv.run do
-            Rbuv::Timer.start(0, 0) { block.call }
+          loop.run do
+            Rbuv::Timer.start(loop, 0, 0) { block.call }
           end
         end
 
@@ -121,8 +122,8 @@ describe Rbuv::Timer do
           block = double
           expect(block).to receive(:call).once
 
-          Rbuv.run do
-            Rbuv::Timer.start 0, 1 do |t|
+          loop.run do
+            Rbuv::Timer.start loop, 0, 1 do |t|
               block.call
               t.stop
             end
@@ -132,7 +133,7 @@ describe Rbuv::Timer do
 
       context "won't segfault" do
         it "when repeat == 0" do
-          Rbuv.run do
+          loop.run do
             Rbuv::Timer.start(0, 0) {}
           end
           GC.start
@@ -142,7 +143,7 @@ describe Rbuv::Timer do
           count = 0
           count_limit = 10
 
-          Rbuv.run do
+          loop.run do
             Rbuv::Timer.start 0, 1 do |timer|
               GC.start
               count += 1
@@ -162,9 +163,9 @@ describe Rbuv::Timer do
   context "when unreferenced" do
     # cant use double here, they are leaking to other specs
     it "does not leave the loop running" do
-      unrefd_timer = Rbuv::Timer.new.unref
+      unrefd_timer = Rbuv::Timer.new(loop).unref
       @timer_fired = false
-      Rbuv.run do
+      loop.run do
         unrefd_timer.start 1, 0 do
           @timer_fired = true
         end
@@ -172,17 +173,17 @@ describe Rbuv::Timer do
       expect(@timer_fired).to be false
 
       # make sure that the timer is fired before next spec
-      Rbuv.run do
+      loop.run do
         unrefd_timer.ref
       end
       expect(@timer_fired).to be true
     end
 
     it "call the close block however" do
-      unrefd_timer = Rbuv::Timer.new.unref
+      unrefd_timer = Rbuv::Timer.new(loop).unref
       @close_fired = false
       @timer_fired = false
-      Rbuv.run do
+      loop.run do
         unrefd_timer.start 1, 0 do
           @timer_fired = true
         end
@@ -194,7 +195,7 @@ describe Rbuv::Timer do
       expect(@close_fired).to be true
 
       # make sure that the timer is closed before next spec
-      Rbuv.run do
+      loop.run do
         unrefd_timer.ref
       end
       expect(@timer_fired).to be false
@@ -210,9 +211,9 @@ describe Rbuv::Timer do
       expect(on_refd_timer).to receive(:call).once
       expect(on_unrefd_close).to receive(:call).once
       expect(on_refd_close).to receive(:call).once
-      unrefd_timer = Rbuv::Timer.new.unref
-      refd_timer = Rbuv::Timer.new
-      Rbuv.run do
+      unrefd_timer = Rbuv::Timer.new(loop).unref
+      refd_timer = Rbuv::Timer.new(loop)
+      loop.run do
         unrefd_timer.start 5, 0 do
           on_unrefd_timer.call
         end

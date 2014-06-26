@@ -1,18 +1,20 @@
 require 'spec_helper'
 
 describe Rbuv::Signal do
+  let(:loop) { Rbuv::Loop.new }
+
   it "#start" do
     block = double
     expect(block).to receive(:call).once
 
-    Rbuv.run do
-      sig = Rbuv::Signal.new
+    loop.run do
+      sig = Rbuv::Signal.new(loop)
       sig.start 2 do
         block.call
         sig.close
       end
 
-      Process.kill(2, Process.pid)
+      `kill -2 #{Process.pid}`
     end
   end
 
@@ -20,14 +22,14 @@ describe Rbuv::Signal do
     block = double
     expect(block).to receive(:call).once
 
-    Rbuv.run do
-      sig = Rbuv::Signal.new
+    loop.run do
+      sig = Rbuv::Signal.new(loop)
       sig.start 2 do
         block.call
         sig.stop
       end
 
-      Process.kill(2, Process.pid)
+      `kill -2 #{Process.pid}`
     end
   end
 end

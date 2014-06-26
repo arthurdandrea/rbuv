@@ -2,6 +2,7 @@ require 'rbuv/rbuv'
 require 'rbuv/version'
 require 'rbuv/timer'
 require 'rbuv/signal'
+require 'rbuv/loop'
 
 module Rbuv
   class << self
@@ -16,9 +17,8 @@ module Rbuv
 
     alias stop stop_loop
 
-    def run
-      Timer.start(0, 0) { yield }
-      self.run_loop
+    def run(&block)
+      Loop.default.run(&block)
     end
 
     def run_block
