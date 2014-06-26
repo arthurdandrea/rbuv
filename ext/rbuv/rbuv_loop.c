@@ -94,6 +94,7 @@ VALUE rbuv_loop_s_default(VALUE klass) {
   }
   return loop;
 }
+
 VALUE rbuv_loop_run(VALUE self) {
   _rbuv_loop_run(self, UV_RUN_DEFAULT);
   return Qnil;

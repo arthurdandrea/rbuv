@@ -15,9 +15,11 @@ typedef struct {
 VALUE cRbuvTcp;
 
 /* Allocator/deallocator */
-static VALUE rbuv_tcp_alloc(VALUE klass);
+static VALUE rbuv_tcp_s_new(int argc, VALUE *argv, VALUE klass);
 static void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp);
 static void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp);
+/* Private Allocatator */
+static VALUE rbuv_tcp_alloc(VALUE klass, uv_loop_t* uv_loop);
 
 /* Methods */
 /*
@@ -46,7 +48,8 @@ extern void __uv_stream_on_connection_no_gvl(uv_stream_t *uv_stream, int status)
 
 void Init_rbuv_tcp() {
   cRbuvTcp = rb_define_class_under(mRbuv, "Tcp", cRbuvStream);
-  rb_define_alloc_func(cRbuvTcp, rbuv_tcp_alloc);
+  rb_undef_alloc_func(cRbuvTcp);
+  rb_define_singleton_method(cRbuvTcp, "new", rbuv_tcp_s_new, -1);
 
   rb_define_method(cRbuvTcp, "bind", rbuv_tcp_bind, 2);
   //rb_define_method(cRbuvTcp, "bind6", rbuv_tcp_bind6, 2);
@@ -55,13 +58,28 @@ void Init_rbuv_tcp() {
   rb_define_method(cRbuvTcp, "accept", rbuv_tcp_accept, -1);
 }
 
-VALUE rbuv_tcp_alloc(VALUE klass) {
+VALUE rbuv_tcp_s_new(int argc, VALUE *argv, VALUE klass) {
+  VALUE loop;
+  uv_loop_t *uv_loop;
+  rb_scan_args(argc, argv, "01", &loop);
+
+  if (loop == Qnil) {
+    uv_loop = uv_default_loop();
+  } else {
+    rbuv_loop_t *rbuv_loop;
+    Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
+    uv_loop = rbuv_loop->uv_handle;
+  }
+  return rbuv_tcp_alloc(klass, uv_loop);
+}
+
+VALUE rbuv_tcp_alloc(VALUE klass, uv_loop_t* uv_loop) {
   rbuv_tcp_t *rbuv_tcp;
   VALUE tcp;
 
   rbuv_tcp = malloc(sizeof(*rbuv_tcp));
   rbuv_tcp->uv_handle = malloc(sizeof(*rbuv_tcp->uv_handle));
-  uv_tcp_init(uv_default_loop(), rbuv_tcp->uv_handle);
+  uv_tcp_init(uv_loop, rbuv_tcp->uv_handle);
   rbuv_tcp->cb_on_close = Qnil;
   rbuv_tcp->cb_on_connection = Qnil;
   rbuv_tcp->cb_on_read = Qnil;
@@ -100,7 +118,9 @@ VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self) {
   VALUE client;
   rb_scan_args(argc, argv, "01", &client);
   if (client == Qnil) {
-    client = rbuv_tcp_alloc(cRbuvTcp);
+    rbuv_tcp_t *rbuv_tcp;
+    Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+    client = rbuv_tcp_alloc(rb_class_of(self), rbuv_tcp->uv_handle->loop);
     VALUE super_argv[1] = { client };
     rb_call_super(1, super_argv);
     return client;
@@ -121,7 +141,8 @@ VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port) {
   bind_addr = uv_ip4_addr(uv_ip, uv_port);
 
   Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_bind(rbuv_tcp->uv_handle, bind_addr));
+  RBUV_CHECK_UV_RETURN(uv_tcp_bind(rbuv_tcp->uv_handle, bind_addr),
+                       rbuv_tcp->uv_handle->loop);
 
   RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
@@ -151,7 +172,8 @@ VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port) {
   connect_addr = uv_ip4_addr(uv_ip, uv_port);
 
   RBUV_CHECK_UV_RETURN(uv_tcp_connect(uv_connect, rbuv_tcp->uv_handle,
-                                      connect_addr, _uv_tcp_on_connect));
+                                      connect_addr, _uv_tcp_on_connect),
+                       rbuv_tcp->uv_handle->loop);
 
   RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
