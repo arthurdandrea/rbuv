@@ -23,6 +23,11 @@ typedef struct {
   uv_buf_t *buf;
 } _uv_stream_on_read_arg_t;
 
+typedef struct {
+  uv_write_t *uv_req;
+  int status;
+} _uv_stream_on_write_arg_t;
+
 VALUE cRbuvStream;
 
 /* Methods */
@@ -45,6 +50,7 @@ static uv_buf_t _uv_alloc_buffer(uv_handle_t *handle, size_t suggested_size);
 static void _uv_stream_on_read(uv_stream_t *stream, ssize_t nread, uv_buf_t buf);
 static void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg);
 static void _uv_stream_on_write(uv_write_t *req, int status);
+static void _uv_stream_on_write_no_gvl(_uv_stream_on_write_arg_t *arg);
 
 void Init_rbuv_stream() {
   cRbuvStream = rb_define_class_under(mRbuv, "Stream", cRbuvHandle);
@@ -253,6 +259,13 @@ void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
 }
 
 void _uv_stream_on_write(uv_write_t *uv_req, int status) {
+  _uv_stream_on_write_arg_t arg = { .uv_req = uv_req, .status = status };
+  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)_uv_stream_on_write_no_gvl, &arg);
+}
+
+void _uv_stream_on_write_no_gvl(_uv_stream_on_write_arg_t *arg) {
+  uv_write_t *uv_req = arg->uv_req;
+  int status = arg->status;
   rbuv_write_req_t *rbuv_req;
   RBUV_DEBUG_LOG("req: %p, status: %d", uv_req, status);
 
