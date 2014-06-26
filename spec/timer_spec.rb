@@ -158,4 +158,74 @@ describe Rbuv::Timer do
     end # context ".start"
 
   end # context "timeout == 0"
+
+  context "when unreferenced" do
+    # cant use double here, they are leaking to other specs
+    it "does not leave the loop running" do
+      unrefd_timer = Rbuv::Timer.new.unref
+      @timer_fired = false
+      Rbuv.run do
+        unrefd_timer.start 1, 0 do
+          @timer_fired = true
+        end
+      end
+      expect(@timer_fired).to be false
+
+      # make sure that the timer is fired before next spec
+      Rbuv.run do
+        unrefd_timer.ref
+      end
+      expect(@timer_fired).to be true
+    end
+
+    it "call the close block however" do
+      unrefd_timer = Rbuv::Timer.new.unref
+      @close_fired = false
+      @timer_fired = false
+      Rbuv.run do
+        unrefd_timer.start 1, 0 do
+          @timer_fired = true
+        end
+        unrefd_timer.close do
+          @close_fired = true
+        end
+      end
+      expect(@timer_fired).to be false
+      expect(@close_fired).to be true
+
+      # make sure that the timer is closed before next spec
+      Rbuv.run do
+        unrefd_timer.ref
+      end
+      expect(@timer_fired).to be false
+    end
+
+    # here we can use double, they are not leaking to other specs
+    it "does not leave the loop running if there is another handler" do
+      on_unrefd_timer = double
+      on_refd_timer = double
+      on_unrefd_close = double
+      on_refd_close = double
+      expect(on_unrefd_timer).not_to receive(:call)
+      expect(on_refd_timer).to receive(:call).once
+      expect(on_unrefd_close).to receive(:call).once
+      expect(on_refd_close).to receive(:call).once
+      unrefd_timer = Rbuv::Timer.new.unref
+      refd_timer = Rbuv::Timer.new
+      Rbuv.run do
+        unrefd_timer.start 5, 0 do
+          on_unrefd_timer.call
+        end
+        refd_timer.start 2, 0 do
+          on_refd_timer.call
+          refd_timer.close do
+            on_refd_close.call
+          end
+          unrefd_timer.close do
+            on_unrefd_close.call
+          end
+        end
+      end
+    end
+  end
 end

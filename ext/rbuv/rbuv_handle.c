@@ -12,6 +12,8 @@ typedef struct {
 VALUE cRbuvHandle;
 
 /* Methods */
+static VALUE rbuv_handle_ref(VALUE self);
+static VALUE rbuv_handle_unref(VALUE self);
 static VALUE rbuv_handle_close(VALUE self);
 static VALUE rbuv_handle_is_active(VALUE self);
 static VALUE rbuv_handle_is_closing(VALUE self);
@@ -24,10 +26,26 @@ static void _uv_handle_on_close_no_gvl(_uv_handle_on_close_arg_t *arg);
 void Init_rbuv_handle() {
   cRbuvHandle = rb_define_class_under(mRbuv, "Handle", rb_cObject);
   rb_undef_alloc_func(cRbuvHandle);
-  
+
+  rb_define_method(cRbuvHandle, "ref", rbuv_handle_ref, 0);
+  rb_define_method(cRbuvHandle, "unref", rbuv_handle_unref, 0);
   rb_define_method(cRbuvHandle, "close", rbuv_handle_close, 0);
   rb_define_method(cRbuvHandle, "active?", rbuv_handle_is_active, 0);
   rb_define_method(cRbuvHandle, "closing?", rbuv_handle_is_closing, 0);
+}
+
+VALUE rbuv_handle_ref(VALUE self) {
+  rbuv_handle_t *rbuv_handle;
+  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
+  uv_ref(rbuv_handle->uv_handle);
+  return self;
+}
+
+VALUE rbuv_handle_unref(VALUE self) {
+  rbuv_handle_t *rbuv_handle;
+  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
+  uv_unref(rbuv_handle->uv_handle);
+  return self;
 }
 
 VALUE rbuv_handle_close(VALUE self) {
