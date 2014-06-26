@@ -67,7 +67,11 @@ int rbuv_loop_free_foreach_handle(VALUE key, VALUE handle, void *ptr) {
     rbuv_handle_t *rbuv_handle = (rbuv_handle_t *)DATA_PTR(handle);
     rbuv_handle_unregister_loop(rbuv_handle);
   }
-  return ST_DELETE; // ST_DELETE
+#ifdef RBUV_RBX
+  return 2; // ST_DELETE
+#else
+  return ST_DELETE;
+#endif
 }
 
 void rbuv_loop_free(rbuv_loop_t *rbuv_loop) {
