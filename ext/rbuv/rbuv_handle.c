@@ -11,6 +11,7 @@ static VALUE rbuv_handle_ref(VALUE self);
 static VALUE rbuv_handle_unref(VALUE self);
 static VALUE rbuv_handle_close(VALUE self);
 static VALUE rbuv_handle_is_active(VALUE self);
+static VALUE rbuv_handle_is_closed(VALUE self);
 static VALUE rbuv_handle_is_closing(VALUE self);
 
 /* Private methods */
@@ -27,6 +28,7 @@ void Init_rbuv_handle() {
   rb_define_method(cRbuvHandle, "close", rbuv_handle_close, 0);
   rb_define_method(cRbuvHandle, "active?", rbuv_handle_is_active, 0);
   rb_define_method(cRbuvHandle, "closing?", rbuv_handle_is_closing, 0);
+  rb_define_method(cRbuvHandle, "closed?", rbuv_handle_is_closed, 0);
 }
 
 // this is called when the ruby CG is freeing a Rbuv::Loop
@@ -109,6 +111,14 @@ VALUE rbuv_handle_close(VALUE self) {
   }
   _rbuv_handle_close(rbuv_handle, block);
   return Qnil;
+}
+
+VALUE rbuv_handle_is_closed(VALUE self) {
+  rbuv_handle_t *rbuv_handle;
+
+  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
+
+  return (rbuv_handle->uv_handle == NULL) ? Qtrue : Qfalse;
 }
 
 VALUE rbuv_handle_is_active(VALUE self) {
