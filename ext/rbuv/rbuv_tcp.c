@@ -37,6 +37,7 @@ static VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port);
 //static VALUE rbuv_tcp_bind6(VALUE self, VALUE ip, VALUE port);
 static VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port);
 //static VALUE rbuv_tcp_connect6(VALUE self, VALUE ip, VALUE port);
+static VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self);
 
 /* Private methods */
 static void _uv_tcp_on_connect(uv_connect_t *uv_connect, int status);
@@ -51,6 +52,7 @@ void Init_rbuv_tcp() {
   //rb_define_method(cRbuvTcp, "bind6", rbuv_tcp_bind6, 2);
   rb_define_method(cRbuvTcp, "connect", rbuv_tcp_connect, 2);
   //rb_define_method(cRbuvTcp, "connect6", rbuv_tcp_connect6, 2);
+  rb_define_method(cRbuvTcp, "accept", rbuv_tcp_accept, -1);
 }
 
 VALUE rbuv_tcp_alloc(VALUE klass) {
@@ -92,6 +94,19 @@ void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp) {
   }
 
   free(rbuv_tcp);
+}
+
+VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self) {
+  VALUE client;
+  rb_scan_args(argc, argv, "01", &client);
+  if (client == Qnil) {
+    client = rbuv_tcp_alloc(cRbuvTcp);
+    VALUE super_argv[1] = { client };
+    rb_call_super(1, super_argv);
+    return client;
+  } else {
+    return rb_call_super(argc, argv);
+  }
 }
 
 VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port) {
