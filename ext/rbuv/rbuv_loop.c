@@ -13,6 +13,7 @@ static VALUE rbuv_loop_stop(VALUE loop);
 static VALUE rbuv_loop_run_once(VALUE loop);
 static VALUE rbuv_loop_run_nowait(VALUE loop);
 static VALUE rbuv_loop_get_handles(VALUE loop);
+static VALUE rbuv_loop_inspect(VALUE loop);
 
 /* Allocator/deallocator */
 static VALUE rbuv_loop_alloc(VALUE klass);
@@ -33,6 +34,7 @@ void Init_rbuv_loop() {
   rb_define_method(cRbuvLoop, "run_once", rbuv_loop_run_once, 0);
   rb_define_method(cRbuvLoop, "run_nowait", rbuv_loop_run_nowait, 0);
   rb_define_method(cRbuvLoop, "handles", rbuv_loop_get_handles, 0);
+  rb_define_method(cRbuvLoop, "inspect", rbuv_loop_inspect, 0);
   rb_define_singleton_method(cRbuvLoop, "default", rbuv_loop_s_default, 0);
 }
 
@@ -139,6 +141,12 @@ VALUE rbuv_loop_get_handles(VALUE self) {
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
   return rb_funcall(rbuv_loop->handles, rb_intern("values"), 0);
+}
+
+VALUE rbuv_loop_inspect(VALUE self) {
+  const char *cname = rb_obj_classname(self);
+  return rb_sprintf("#<%s:%p @handles=%s>", cname, (void*)self,
+                    RSTRING_PTR(rb_inspect(rbuv_loop_get_handles(self))));
 }
 
 void rbuv_loop_register_handle(rbuv_loop_t *rbuv_loop, void *rbuv_handle, VALUE handle) {
