@@ -22,8 +22,7 @@ module Rbuv
     end
 
     def run_block
-      Timer.start(0, 0) { yield }
-      Loop.default.run_once
+      Loop.default.run_once { yield }
     end
 
   end
