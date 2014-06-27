@@ -21,6 +21,7 @@ void Init_rbuv() {
   Init_rbuv_stream();
   Init_rbuv_tcp();
   Init_rbuv_signal();
+  Init_rbuv_poll();
 }
 
 VALUE rbuv_version(VALUE self) {
