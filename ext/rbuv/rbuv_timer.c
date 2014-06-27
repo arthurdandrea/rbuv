@@ -73,6 +73,7 @@ VALUE rbuv_timer_alloc(VALUE klass, VALUE loop) {
 
 void rbuv_timer_mark(rbuv_timer_t *rbuv_timer) {
   assert(rbuv_timer);
+  rb_gc_mark(rbuv_timer->loop);
   rb_gc_mark(rbuv_timer->cb_on_close);
   rb_gc_mark(rbuv_timer->cb_on_timeout);
 }

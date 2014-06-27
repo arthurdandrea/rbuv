@@ -75,6 +75,7 @@ void rbuv_signal_mark(rbuv_signal_t *rbuv_signal) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_signal: %p, uv_handle: %p, self: %lx",
                         rbuv_signal, rbuv_signal->uv_handle,
                         (VALUE)rbuv_signal->uv_handle->data);
+  rb_gc_mark(rbuv_signal->cb_on_close);
   rb_gc_mark(rbuv_signal->cb_on_signal);
   rb_gc_mark(rbuv_signal->loop);
 }
