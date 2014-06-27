@@ -13,6 +13,7 @@ static VALUE rbuv_loop_stop(VALUE loop);
 static VALUE rbuv_loop_run_once(VALUE loop);
 static VALUE rbuv_loop_run_nowait(VALUE loop);
 static VALUE rbuv_loop_get_handles(VALUE loop);
+static VALUE rbuv_loop_uv_active_handles(VALUE loop);
 static VALUE rbuv_loop_inspect(VALUE loop);
 
 /* Allocator/deallocator */
@@ -26,7 +27,7 @@ static void _rbuv_loop_run(VALUE self, uv_run_mode mode);
 static void _rbuv_loop_run_no_gvl(_rbuv_loop_run_arg_t *arg);
 
 void Init_rbuv_loop() {
-  cRbuvLoop = rb_define_class_under(mRbuv, "Loop", cRbuvHandle);
+  cRbuvLoop = rb_define_class_under(mRbuv, "Loop", rb_cObject);
   rb_define_alloc_func(cRbuvLoop, rbuv_loop_alloc);
 
   rb_define_method(cRbuvLoop, "run", rbuv_loop_run, 0);
@@ -34,6 +35,7 @@ void Init_rbuv_loop() {
   rb_define_method(cRbuvLoop, "run_once", rbuv_loop_run_once, 0);
   rb_define_method(cRbuvLoop, "run_nowait", rbuv_loop_run_nowait, 0);
   rb_define_method(cRbuvLoop, "handles", rbuv_loop_get_handles, 0);
+  rb_define_method(cRbuvLoop, "uv_active_handles", rbuv_loop_uv_active_handles, 0);
   rb_define_method(cRbuvLoop, "inspect", rbuv_loop_inspect, 0);
   rb_define_singleton_method(cRbuvLoop, "default", rbuv_loop_s_default, 0);
 }
@@ -141,6 +143,12 @@ VALUE rbuv_loop_get_handles(VALUE self) {
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
   return rb_funcall(rbuv_loop->handles, rb_intern("values"), 0);
+}
+
+VALUE rbuv_loop_uv_active_handles(VALUE self) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  return UINT2NUM(rbuv_loop->uv_handle->active_handles);
 }
 
 VALUE rbuv_loop_inspect(VALUE self) {
