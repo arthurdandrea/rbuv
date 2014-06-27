@@ -1,10 +1,9 @@
 require 'spec_helper'
 require 'shared_examples/handle'
+require 'shared_context/loop'
 
-describe Rbuv::Signal, :handle => true do
-  let(:loop) { Rbuv::Loop.new }
-  after { loop.dispose }
-  subject { Rbuv::Signal.new(loop) }
+describe Rbuv::Signal do
+  include_context Rbuv::Loop
   it_should_behave_like Rbuv::Handle
 
   it "#start" do

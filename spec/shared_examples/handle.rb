@@ -1,4 +1,6 @@
 shared_examples Rbuv::Handle do
+  it { is_expected.to be_a_kind_of Rbuv::Handle }
+
   context "#ref" do
     it "respond_to #ref" do
       expect(subject).to respond_to(:ref)

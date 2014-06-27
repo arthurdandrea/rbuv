@@ -1,6 +1,7 @@
 require 'spec_helper'
 require 'shared_examples/stream'
 require 'shared_examples/handle'
+require 'shared_context/loop'
 require 'socket'
 
 def port_in_use?(port, host='127.0.0.1')
@@ -19,12 +20,8 @@ rescue Errno::ECONNREFUSED
   true
 end
 
-describe Rbuv::Tcp do
-  let(:loop) { Rbuv::Loop.new }
-  after { loop.dispose }
-  subject { Rbuv::Tcp.new(loop) }
-
-  it { is_expected.to be_a_kind_of Rbuv::Stream }
+describe Rbuv::Tcp, :type => :handle do
+  include_context Rbuv::Loop
 
   it "#bind" do
     expect(port_in_use?(60000)).to be false
