@@ -24,7 +24,7 @@ typedef struct {
 typedef struct {
   uv_stream_t *uv_stream;
   ssize_t nread;
-  uv_buf_t *buf;
+  char *base;
 } _uv_stream_on_read_arg_t;
 
 typedef struct {
@@ -253,14 +253,36 @@ uv_buf_t _uv_alloc_buffer(uv_handle_t *handle, size_t suggested_size) {
 }
 
 void _uv_stream_on_read(uv_stream_t *uv_stream, ssize_t nread, uv_buf_t buf) {
-  _uv_stream_on_read_arg_t arg = { .uv_stream = uv_stream, .nread = nread, .buf = &buf };
-  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)_uv_stream_on_read_no_gvl, &arg);
+  if (nread == 0) {
+    if (buf.base != NULL) {
+      free(buf.base);
+    }
+    return;
+  } else {
+    _uv_stream_on_read_arg_t arg;
+    arg.uv_stream = uv_stream;
+    arg.nread = nread;
+
+    if (nread < 0) {
+      if (buf.base != NULL) {
+        free(buf.base);
+      }
+      arg.base = NULL;
+    } else {
+      // Here uvrb uses realloc. not sure about that
+      // buf.base = realloc(buf.base, nread);
+      // should we reassign buf.len = nread?
+      arg.base = buf.base;
+    }
+    rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)
+      _uv_stream_on_read_no_gvl, &arg);
+  }
 }
 
 void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
   uv_stream_t *uv_stream = arg->uv_stream;
   ssize_t nread = arg->nread;
-  uv_buf_t *buf = arg->buf;
+  char *base = arg->base;
 
   VALUE stream;
   rbuv_stream_t *rbuv_stream;
@@ -277,9 +299,7 @@ void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
                         RSTRING_PTR(rb_inspect(stream)),
                         RSTRING_PTR(rb_inspect(on_read)));
 
-  if (nread > 0) {
-    rb_funcall(on_read, id_call, 1, rb_str_new(buf->base, nread));
-  } else {
+  if (nread < 0) {
     uv_err = uv_last_error(uv_stream->loop);
     if (uv_err.code == UV_EOF) {
       error = rb_exc_new2(rb_eEOFError, "end of file reached");
@@ -287,10 +307,9 @@ void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
       error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
     }
     rb_funcall(on_read, id_call, 2, Qnil, error);
+  } else {
+    rb_funcall(on_read, id_call, 1, rb_str_new(base, nread));
   }
-
-  assert(buf->base);
-  free(buf->base);
 }
 
 void _uv_stream_on_write(uv_write_t *uv_req, int status) {
