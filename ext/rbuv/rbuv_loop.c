@@ -115,7 +115,7 @@ VALUE rbuv_loop_s_default(VALUE klass) {
 
 VALUE rbuv_loop_run(VALUE self) {
   _rbuv_loop_run(self, UV_RUN_DEFAULT);
-  return Qnil;
+  return self;
 }
 
 VALUE rbuv_loop_stop(VALUE self) {
@@ -124,17 +124,17 @@ VALUE rbuv_loop_stop(VALUE self) {
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
 
   uv_stop(rbuv_loop->uv_handle);
-  return Qnil;
+  return self;
 }
 
 VALUE rbuv_loop_run_once(VALUE self) {
   _rbuv_loop_run(self, UV_RUN_ONCE);
-  return Qnil;
+  return self;
 }
 
 VALUE rbuv_loop_run_nowait(VALUE self) {
   _rbuv_loop_run(self, UV_RUN_NOWAIT);
-  return Qnil;
+  return self;
 }
 
 VALUE rbuv_loop_get_handles(VALUE self) {

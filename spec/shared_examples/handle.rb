@@ -2,36 +2,31 @@ shared_examples Rbuv::Handle do
   it { is_expected.to be_a_kind_of Rbuv::Handle }
 
   context "#ref" do
-    it "respond_to #ref" do
-      expect(subject).to respond_to(:ref)
-    end
-  end
+    it { is_expected.to respond_to(:ref) }
 
-  context "#ref" do
-    it "respond_to #ref" do
-      expect(subject).to respond_to(:ref)
+    it "return self" do
+      expect(subject.ref).to be subject
     end
   end
 
   context "#unref" do
-    it "respond_to #unref" do
-      expect(subject).to respond_to(:unref)
+    it { is_expected.to respond_to(:unref) }
+
+    it "return self" do
+      expect(subject.unref).to be subject
     end
   end
 
-  context "#close" do
-    it "respond_to #close" do
-      expect(subject).to respond_to(:close)
-    end
-  end
 
   context "#active?" do
-    it "respond_to #active?" do
-      expect(subject).to respond_to(:active?)
-    end
+    it { is_expected.to respond_to(:active?) }
   end
 
   context "#close" do
+    it "returns self" do
+      expect(subject.close).to be subject
+    end
+
     it "affect #closing?" do
       loop.run do
         subject.close

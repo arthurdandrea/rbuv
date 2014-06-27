@@ -116,7 +116,7 @@ VALUE rbuv_handle_close(VALUE self) {
     rb_raise(eRbuvError, "Handle is closed");
   }
   _rbuv_handle_close(rbuv_handle, block);
-  return Qnil;
+  return self;
 }
 
 VALUE rbuv_handle_is_closed(VALUE self) {
