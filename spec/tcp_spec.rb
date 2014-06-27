@@ -1,4 +1,6 @@
 require 'spec_helper'
+require 'shared_examples/stream'
+require 'shared_examples/handle'
 require 'socket'
 
 def port_in_use?(port, host='127.0.0.1')
@@ -245,47 +247,30 @@ describe Rbuv::Tcp do
 
   end
 
+  def open_server_on(ip='127.0.0.1', port=60000)
+    results = []
+    rb_server = TCPServer.new ip, port
+    rb_server.listen 10
+    thread = Thread.start do
+      while true
+        client = rb_server.accept
+        results << client.read
+        client.close
+      end
+    end
+    begin
+      yield
+      sleep 0.01 # give the network loop some time to breath
+    ensure
+      running = false
+      thread.kill
+      thread.join
+      rb_server.close
+    end
+    results
+  end
+
   context "#write" do
-    def open_server_on(ip='127.0.0.1', port=60000)
-      results = []
-      rb_server = TCPServer.new ip, port
-      rb_server.listen 10
-      thread = Thread.start do
-        while true
-          client = rb_server.accept
-          results << client.read
-          client.close
-        end
-      end
-      begin
-        yield
-        sleep 0.01 # give the network loop some time to breath
-      ensure
-        running = false
-        thread.kill
-        thread.join
-        rb_server.close
-      end
-      results
-    end
-
-    it "calls the block" do
-      on_write = double
-      expect(on_write).to receive(:call).once
-
-      open_server_on '127.0.0.1', 60000 do
-        loop.run do
-          client = Rbuv::Tcp.new(loop)
-          client.connect('127.0.0.1', 60000) do
-            client.write('test string') do
-              on_write.call
-              client.close
-            end
-          end
-        end
-      end
-    end
-
     it "writes to the stream" do
       results = open_server_on '127.0.0.1', 60000 do
         loop.run do
@@ -300,4 +285,18 @@ describe Rbuv::Tcp do
       expect(results).to eq(['test string'])
     end
   end
+
+  it_should_behave_like Rbuv::Stream do
+    let(:stream) { Rbuv::Tcp.new(loop) }
+    around do |example|
+      loop.run do
+        open_server_on '127.0.0.1', 60000 do
+          stream.connect '127.0.0.1', 60000 do
+            example.run
+          end
+        end
+      end
+    end
+  end
+  it_should_behave_like Rbuv::Handle
 end

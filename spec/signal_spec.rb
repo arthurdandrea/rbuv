@@ -1,8 +1,11 @@
 require 'spec_helper'
+require 'shared_examples/handle'
 
-describe Rbuv::Signal do
+describe Rbuv::Signal, :handle => true do
   let(:loop) { Rbuv::Loop.new }
   after { loop.dispose }
+  subject { Rbuv::Signal.new(loop) }
+  it_should_behave_like Rbuv::Handle
 
   it "#start" do
     block = double
