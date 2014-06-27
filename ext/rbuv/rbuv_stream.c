@@ -168,6 +168,10 @@ VALUE rbuv_stream_read_stop(VALUE self) {
 VALUE rbuv_stream_write(VALUE self, VALUE data) {
   rbuv_stream_t *rbuv_stream;
   rbuv_write_req_t *req;
+  if (TYPE(data) != T_STRING) {
+    rb_raise(rb_eTypeError, "not valid value, should be a String");
+    return Qnil;
+  }
   rb_need_block();
   VALUE block = rb_block_proc();
 
