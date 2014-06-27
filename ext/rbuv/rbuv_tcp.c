@@ -42,6 +42,15 @@ static VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port);
 static VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port);
 //static VALUE rbuv_tcp_connect6(VALUE self, VALUE ip, VALUE port);
 static VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self);
+static VALUE rbuv_tcp_enable_keepalive(VALUE self, VALUE delay);
+static VALUE rbuv_tcp_disable_keepalive(VALUE self);
+static VALUE rbuv_tcp_enable_nodelay(VALUE self);
+static VALUE rbuv_tcp_disable_nodelay(VALUE self);
+static VALUE rbuv_tcp_enable_simultaneous_accepts(VALUE self);
+static VALUE rbuv_tcp_disable_simultaneous_accepts(VALUE self);
+static VALUE rbuv_tcp_getpeername(VALUE self);
+static VALUE rbuv_tcp_getsockname(VALUE self);
+static VALUE rbuv_tcp_extractname(struct sockaddr* sockname, int namelen);
 
 /* Private methods */
 static void _uv_tcp_on_connect(uv_connect_t *uv_connect, int status);
@@ -58,6 +67,16 @@ void Init_rbuv_tcp() {
   rb_define_method(cRbuvTcp, "connect", rbuv_tcp_connect, 2);
   //rb_define_method(cRbuvTcp, "connect6", rbuv_tcp_connect6, 2);
   rb_define_method(cRbuvTcp, "accept", rbuv_tcp_accept, -1);
+  rb_define_method(cRbuvTcp, "enable_keepalive", rbuv_tcp_enable_keepalive, 1);
+  rb_define_method(cRbuvTcp, "disable_keepalive", rbuv_tcp_disable_keepalive, 0);
+  rb_define_method(cRbuvTcp, "enable_nodelay", rbuv_tcp_enable_nodelay, 0);
+  rb_define_method(cRbuvTcp, "disable_nodelay", rbuv_tcp_disable_nodelay, 0);
+  rb_define_method(cRbuvTcp, "enable_simultaneous_accepts",
+                   rbuv_tcp_enable_simultaneous_accepts, 0);
+  rb_define_method(cRbuvTcp, "disable_simultaneous_accepts",
+                   rbuv_tcp_disable_simultaneous_accepts, 0);
+  rb_define_method(cRbuvTcp, "peername", rbuv_tcp_getpeername, 0);
+  rb_define_method(cRbuvTcp, "sockname", rbuv_tcp_getsockname, 0);
 }
 
 VALUE rbuv_tcp_s_new(int argc, VALUE *argv, VALUE klass) {
@@ -83,7 +102,6 @@ VALUE rbuv_tcp_alloc(VALUE klass, VALUE loop) {
   rbuv_tcp->cb_on_connection = Qnil;
   rbuv_tcp->cb_on_read = Qnil;
   rbuv_tcp->loop = loop;
-
 
   tcp = Data_Wrap_Struct(klass, rbuv_tcp_mark, rbuv_tcp_free, rbuv_tcp);
   rbuv_tcp->uv_handle->data = (void *)tcp;
@@ -111,6 +129,110 @@ void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p", rbuv_tcp, rbuv_tcp->uv_handle);
 
   rbuv_handle_free((rbuv_handle_t *)rbuv_tcp);
+}
+
+VALUE rbuv_tcp_enable_nodelay(VALUE self) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  RBUV_CHECK_UV_RETURN(uv_tcp_nodelay(rbuv_tcp->uv_handle, 1),
+                       rbuv_tcp->uv_handle->loop);
+  return self;
+}
+
+VALUE rbuv_tcp_disable_nodelay(VALUE self) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  RBUV_CHECK_UV_RETURN(uv_tcp_nodelay(rbuv_tcp->uv_handle, 0),
+                       rbuv_tcp->uv_handle->loop);
+  return self;
+}
+
+VALUE rbuv_tcp_enable_keepalive(VALUE self, VALUE delay) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  RBUV_CHECK_UV_RETURN(uv_tcp_keepalive(rbuv_tcp->uv_handle, 1,
+                                        NUM2UINT(delay)),
+                       rbuv_tcp->uv_handle->loop);
+  return self;
+}
+
+VALUE rbuv_tcp_disable_keepalive(VALUE self) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  RBUV_CHECK_UV_RETURN(uv_tcp_keepalive(rbuv_tcp->uv_handle, 0, 0),
+                       rbuv_tcp->uv_handle->loop);
+  return self;
+}
+
+VALUE rbuv_tcp_enable_simultaneous_accepts(VALUE self) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  RBUV_CHECK_UV_RETURN(uv_tcp_simultaneous_accepts(rbuv_tcp->uv_handle, 1),
+                       rbuv_tcp->uv_handle->loop);
+
+  return self;
+}
+VALUE rbuv_tcp_disable_simultaneous_accepts(VALUE self) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  RBUV_CHECK_UV_RETURN(uv_tcp_simultaneous_accepts(rbuv_tcp->uv_handle, 0),
+                       rbuv_tcp->uv_handle->loop);
+  return self;
+}
+
+
+VALUE rbuv_tcp_getpeername(VALUE self) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  struct sockaddr peername;
+  int namelen = sizeof peername;
+  RBUV_CHECK_UV_RETURN(uv_tcp_getpeername(rbuv_tcp->uv_handle, &peername,
+                                          &namelen),
+                       rbuv_tcp->uv_handle->loop);
+  return rbuv_tcp_extractname(&peername, namelen);
+}
+
+VALUE rbuv_tcp_getsockname(VALUE self) {
+  rbuv_tcp_t *rbuv_tcp;
+  Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
+  struct sockaddr sockname;
+  int namelen = sizeof sockname;
+  RBUV_CHECK_UV_RETURN(uv_tcp_getsockname(rbuv_tcp->uv_handle, &sockname,
+                                          &namelen),
+                       rbuv_tcp->uv_handle->loop);
+  return rbuv_tcp_extractname(&sockname, namelen);
+}
+
+VALUE rbuv_tcp_extractname(struct sockaddr* sockname, int namelen) {
+  int addr_type;
+  VALUE ip;
+  ushort *port;
+  char *ip_ptr = malloc(sizeof(char) * namelen);
+  if (sockname->sa_family == AF_INET6) {
+    struct sockaddr_in6 sockname_in6 = *(struct sockaddr_in6*) sockname;
+    port = &sockname_in6.sin6_port;
+    uv_ip6_name(&sockname_in6, ip_ptr, namelen);
+  } else if (sockname->sa_family == AF_INET) {
+    struct sockaddr_in sockname_in = *(struct sockaddr_in*) sockname;
+    port = &sockname_in.sin_port;
+    uv_ip4_name(&sockname_in, ip_ptr, namelen);
+  } else {
+    free(ip_ptr); // free before jumping out of here
+    rb_raise(eRbuvError, "unexpected error");
+    return Qnil; // to satisfy compilers
+  }
+  ip = rb_str_new_cstr(ip_ptr);
+  free(ip_ptr);
+
+#ifdef RBUV_RBX
+  VALUE ary = rb_ary_new(2);
+  rb_ary_push(ary, ip);
+  rb_ary_push(ary, UINT2NUM(ntohs(*port)));
+  return ary;
+#else
+  return rb_ary_new_from_args(2, ip,
+                              UINT2NUM(ntohs(*port)));
+#endif
 }
 
 VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self) {
