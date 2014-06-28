@@ -109,26 +109,24 @@ describe Rbuv::Tcp, :type => :handle do
     end
   end
 
-  context "#accept" do
+  context "#accept", loop: :running do
     context "with a client as a paramenter" do
       it "does not raise an error" do
         expect(port_in_use?(60000)).to be false
 
-        loop.run do
-          tcp = Rbuv::Tcp.new(loop)
-          tcp.bind '127.0.0.1', 60000
+        tcp = Rbuv::Tcp.new(loop)
+        tcp.bind '127.0.0.1', 60000
 
-          sock = nil
+        sock = nil
 
-          tcp.listen(10) do |s|
-            c = Rbuv::Tcp.new(loop)
-            expect { s.accept(c) }.not_to raise_error
-            sock.close
-            tcp.close
-          end
-
-          sock = TCPSocket.new '127.0.0.1', 60000
+        tcp.listen(10) do |s|
+          c = Rbuv::Tcp.new(loop)
+          expect { s.accept(c) }.not_to raise_error
+          sock.close
+          tcp.close
         end
+
+        sock = TCPSocket.new '127.0.0.1', 60000
       end
     end
 
@@ -136,60 +134,52 @@ describe Rbuv::Tcp, :type => :handle do
       it "returns a Rbuv::Tcp" do
         expect(port_in_use?(60000)).to be false
 
-        loop.run do
-          tcp = Rbuv::Tcp.new(loop)
-          tcp.bind '127.0.0.1', 60000
+        tcp = Rbuv::Tcp.new(loop)
+        tcp.bind '127.0.0.1', 60000
 
-          sock = nil
+        sock = nil
 
-          tcp.listen(10) do |s|
-            client = s.accept
-            expect(client).to be_a Rbuv::Tcp
-            sock.close
-            tcp.close
-          end
-
-          sock = TCPSocket.new '127.0.0.1', 60000
+        tcp.listen(10) do |s|
+          client = s.accept
+          expect(client).to be_a Rbuv::Tcp
+          sock.close
+          tcp.close
         end
+
+        sock = TCPSocket.new '127.0.0.1', 60000
       end
 
       it "does not return self" do
         expect(port_in_use?(60000)).to be false
 
-        loop.run do
-          tcp = Rbuv::Tcp.new(loop)
-          tcp.bind '127.0.0.1', 60000
+        tcp = Rbuv::Tcp.new(loop)
+        tcp.bind '127.0.0.1', 60000
 
-          sock = nil
+        sock = nil
 
-          tcp.listen(10) do |s|
-            client = s.accept
-            expect(client).not_to be s
-            sock.close
-            tcp.close
-          end
-
-          sock = TCPSocket.new '127.0.0.1', 60000
+        tcp.listen(10) do |s|
+          client = s.accept
+          expect(client).not_to be s
+          sock.close
+          tcp.close
         end
+
+        sock = TCPSocket.new '127.0.0.1', 60000
       end
     end
   end
 
-  context "#close" do
+  context "#close", loop: :running do
     it "affect #closing?" do
-      loop.run do
-        tcp = Rbuv::Tcp.new(loop)
-        tcp.close
-        expect(tcp.closing?).to be true
-      end
+      tcp = Rbuv::Tcp.new(loop)
+      tcp.close
+      expect(tcp.closing?).to be true
     end
 
     it "affect #closed?" do
-      loop.run do
-        tcp = Rbuv::Tcp.new(loop)
-        tcp.close do
-          expect(tcp.closed?).to be true
-        end
+      tcp = Rbuv::Tcp.new(loop)
+      tcp.close do
+        expect(tcp.closed?).to be true
       end
     end
 
@@ -197,12 +187,10 @@ describe Rbuv::Tcp, :type => :handle do
       on_close = double
       expect(on_close).to receive(:call).once
 
-      loop.run do
-        tcp = Rbuv::Tcp.new(loop)
+      tcp = Rbuv::Tcp.new(loop)
 
-        tcp.close do
-          on_close.call
-        end
+      tcp.close do
+        on_close.call
       end
     end
 
@@ -213,27 +201,23 @@ describe Rbuv::Tcp, :type => :handle do
       no_on_close = double
       expect(no_on_close).not_to receive(:call)
 
-      loop.run do
-        tcp = Rbuv::Tcp.new(loop)
+      tcp = Rbuv::Tcp.new(loop)
 
-        tcp.close do
-          on_close.call
-        end
+      tcp.close do
+        on_close.call
+      end
 
-        tcp.close do
-          no_on_close.call
-        end
+      tcp.close do
+        no_on_close.call
       end
     end # context "#close"
 
-    context "#connect" do
+    context "#connect", loop: :running do
       it "when server does not exist" do
-        loop.run do
-          c = Rbuv::Tcp.new(loop)
-          c.connect('127.0.0.1', 60000) do |client, error|
-            expect(error).to be_a_kind_of Rbuv::Error
-            c.close
-          end
+        c = Rbuv::Tcp.new(loop)
+        c.connect('127.0.0.1', 60000) do |client, error|
+          expect(error).to be_a_kind_of Rbuv::Error
+          c.close
         end
       end
 
@@ -244,13 +228,11 @@ describe Rbuv::Tcp, :type => :handle do
         on_connect = double
         expect(on_connect).to receive(:call).once
 
-        loop.run do
-          c = Rbuv::Tcp.new(loop)
-          c.connect('127.0.0.1', 60000) do
-            on_connect.call
-            c.close
-            s.close
-          end
+        c = Rbuv::Tcp.new(loop)
+        c.connect('127.0.0.1', 60000) do
+          on_connect.call
+          c.close
+          s.close
         end
       end
     end
