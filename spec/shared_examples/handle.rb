@@ -17,7 +17,6 @@ shared_examples Rbuv::Handle do
     end
   end
 
-
   context "#active?" do
     it { is_expected.to respond_to(:active?) }
   end
