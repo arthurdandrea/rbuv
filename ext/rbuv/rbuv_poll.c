@@ -37,8 +37,8 @@ void Init_rbuv_poll() {
 
   rb_define_method(cRbuvPoll, "start", rbuv_poll_start, 1);
   rb_define_method(cRbuvPoll, "stop", rbuv_poll_stop, 0);
-  rb_define_const(cRbuvPoll, "READABLE", UV_READABLE);
-  rb_define_const(cRbuvPoll, "WRITABLE", UV_WRITABLE);
+  rb_define_const(cRbuvPoll, "READABLE", INT2FIX(UV_READABLE));
+  rb_define_const(cRbuvPoll, "WRITABLE", INT2FIX(UV_WRITABLE));
 }
 
 VALUE rbuv_poll_s_new(int argc, VALUE *argv, VALUE klass) {
