@@ -84,7 +84,7 @@ void rbuv_loop_free(rbuv_loop_t *rbuv_loop) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_loop: %p, uv_handle: %p", rbuv_loop, rbuv_loop->uv_handle);
   RBUV_DEBUG_LOG_DETAIL("handles: %d", RHASH_SIZE(rbuv_loop->handles));
 
-  rb_hash_foreach(rbuv_loop->handles, rbuv_loop_free_foreach_handle, NULL);
+  rb_hash_foreach(rbuv_loop->handles, rbuv_loop_free_foreach_handle, Qnil);
   if (rbuv_loop->is_default == 0) {
     uv_loop_delete(rbuv_loop->uv_handle);
   }
