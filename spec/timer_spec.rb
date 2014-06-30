@@ -53,16 +53,16 @@ describe Rbuv::Timer do
     context "#active?" do
       it "should be false" do
         loop.run do
-          subject.start 0, 0 do |t|
-            expect(subject.active?).to be false
+          subject.start 0, 0 do
+            expect(subject).not_to be_active
           end
         end
       end
 
       it "should be true" do
         loop.run do
-          subject.start 0, 1 do |t|
-            expect(subject.active?).to be true
+          subject.start 0, 1 do
+            expect(subject).to be_active
             subject.stop
           end
         end

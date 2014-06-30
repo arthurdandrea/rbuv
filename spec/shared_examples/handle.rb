@@ -29,14 +29,14 @@ shared_examples Rbuv::Handle do
     it "affect #closing?" do
       loop.run do
         subject.close
-        expect(subject.closing?).to be true
+        expect(subject).to be_closing
       end
     end
 
     it "affect #closed?" do
       loop.run do
         subject.close do
-          expect(subject.closed?).to be true
+          expect(subject).to be_closed
         end
       end
     end
