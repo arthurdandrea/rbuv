@@ -170,50 +170,6 @@ describe Rbuv::Tcp, :type => :handle do
     end
   end
 
-  context "#close", loop: :running do
-    it "affect #closing?" do
-      tcp = Rbuv::Tcp.new(loop)
-      tcp.close
-      expect(tcp.closing?).to be true
-    end
-
-    it "affect #closed?" do
-      tcp = Rbuv::Tcp.new(loop)
-      tcp.close do
-        expect(tcp.closed?).to be true
-      end
-    end
-
-    it "call once" do
-      tcp = Rbuv::Tcp.new(loop)
-      on_close = double
-      expect(on_close).to receive(:call).once.with(tcp)
-
-      tcp.close do |*args|
-        on_close.call(*args)
-      end
-    end
-
-    it "call multi-times" do
-      tcp = Rbuv::Tcp.new(loop)
-
-      on_close = double
-      expect(on_close).to receive(:call).once.with(tcp)
-
-      no_on_close = double
-      expect(no_on_close).not_to receive(:call)
-
-
-      tcp.close do |*args|
-        on_close.call(*args)
-      end
-
-      tcp.close do |*args|
-        no_on_close.call(*args)
-      end
-    end # context "#close"
-  end
-
   context "#connect" do
     context "when server does not exist" do
       it "calls the block with tcp and an error" do
