@@ -138,22 +138,23 @@ void _uv_poll_on_available(uv_poll_t *uv_poll, int status, int events) {
 void _uv_poll_on_available_no_gvl(_uv_timer_on_available_no_gvl_arg_t *arg) {
   uv_poll_t *uv_poll = arg->uv_poll;
   int status = arg->status;
-  int events = arg->events;
 
+  VALUE events;
   VALUE poll;
   VALUE error;
   uv_err_t uv_err;
   rbuv_poll_t *rbuv_poll;
 
   poll = (VALUE)uv_poll->data;
+  events = INT2FIX(arg->events);
   Data_Get_Struct(poll, struct rbuv_poll_s, rbuv_poll);
   if (status == -1) {
     uv_err = uv_last_error(uv_poll->loop);
-    RBUV_DEBUG_LOG_DETAIL("uv_poll: %p, status: %d, error: %s", uv_stream, status,
-                          uv_strerror(uv_err));
+    RBUV_DEBUG_LOG_DETAIL("uv_poll: %p, status: %d, error: %s", uv_stream,
+                          status, uv_strerror(uv_err));
     error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
-    rb_funcall(rbuv_poll->cb_on_available, id_call, 3, poll, Qnil, error);
   } else {
-    rb_funcall(rbuv_poll->cb_on_available, id_call, 2, poll, INT2FIX(events));
+    error = Qnil;
   }
+  rb_funcall(rbuv_poll->cb_on_available, id_call, 3, poll, events, error);
 }

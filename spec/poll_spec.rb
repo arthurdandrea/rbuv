@@ -18,7 +18,7 @@ describe Rbuv::Poll do
 
     it "calls the block" do
       on_ready = double
-      expect(on_ready).to receive(:call).once.with(subject, Rbuv::Poll::WRITABLE)
+      expect(on_ready).to receive(:call).once.with(subject, Rbuv::Poll::WRITABLE, nil)
 
       loop.run do
         subject.start Rbuv::Poll::WRITABLE do |*args|

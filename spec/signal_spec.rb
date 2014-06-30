@@ -7,13 +7,14 @@ describe Rbuv::Signal do
   it_should_behave_like Rbuv::Handle
 
   it "#start" do
-    block = double
-    expect(block).to receive(:call).once
-
     loop.run do
       sig = Rbuv::Signal.new(loop)
-      sig.start 2 do
-        block.call
+
+      block = double
+      expect(block).to receive(:call).once.with(sig, 2)
+
+      sig.start 2 do |*args|
+        block.call(*args)
         sig.close
       end
 
@@ -22,13 +23,14 @@ describe Rbuv::Signal do
   end
 
   it "#stop" do
-    block = double
-    expect(block).to receive(:call).once
-
     loop.run do
       sig = Rbuv::Signal.new(loop)
-      sig.start 2 do
-        block.call
+
+      block = double
+      expect(block).to receive(:call).once.with(sig, 2)
+
+      sig.start 2 do |*args|
+        block.call(*args)
         sig.stop
       end
 

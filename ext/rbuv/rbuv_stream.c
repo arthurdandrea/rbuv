@@ -246,10 +246,10 @@ void __uv_stream_on_connection_no_gvl(uv_stream_t *uv_stream, int status) {
     RBUV_DEBUG_LOG_DETAIL("uv_stream: %p, status: %d, error: %s", uv_stream, status,
                           uv_strerror(uv_err));
     error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
-    rb_funcall(on_connection, id_call, 2, stream, error);
   } else {
-    rb_funcall(on_connection, id_call, 1, stream);
+    error = Qnil;
   }
+  rb_funcall(on_connection, id_call, 2, stream, error);
 }
 
 uv_buf_t _uv_alloc_buffer(uv_handle_t *handle, size_t suggested_size) {
@@ -293,6 +293,7 @@ void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
   VALUE on_read;
   uv_err_t uv_err;
   VALUE error;
+  VALUE data;
 
   RBUV_DEBUG_LOG("uv_stream: %p, nread: %lu", uv_stream, nread);
 
@@ -310,10 +311,12 @@ void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
     } else {
       error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
     }
-    rb_funcall(on_read, id_call, 2, Qnil, error);
+    data = Qnil;
   } else {
-    rb_funcall(on_read, id_call, 1, rb_str_new(base, nread));
+    error = Qnil;
+    data = rb_str_new(base, nread);
   }
+  rb_funcall(on_read, id_call, 2, data, error);
 }
 
 void _uv_stream_on_write(uv_write_t *uv_req, int status) {

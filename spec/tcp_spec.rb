@@ -91,15 +91,16 @@ describe Rbuv::Tcp, :type => :handle do
     end
 
     it "should call the on_connection callback when connection coming" do
+      tcp = Rbuv::Tcp.new(loop)
       on_connection = double
-      expect(on_connection).to receive(:call).once
+      expect(on_connection).to receive(:call).once.with(tcp, nil)
 
       loop.run do
-        tcp = Rbuv::Tcp.new(loop)
+
         tcp.bind '127.0.0.1', 60000
 
-        tcp.listen(10) do
-          on_connection.call
+        tcp.listen(10) do |*args|
+          on_connection.call(*args)
           tcp.close
         end
 
@@ -184,55 +185,62 @@ describe Rbuv::Tcp, :type => :handle do
     end
 
     it "call once" do
-      on_close = double
-      expect(on_close).to receive(:call).once
-
       tcp = Rbuv::Tcp.new(loop)
+      on_close = double
+      expect(on_close).to receive(:call).once.with(tcp)
 
-      tcp.close do
-        on_close.call
+      tcp.close do |*args|
+        on_close.call(*args)
       end
     end
 
     it "call multi-times" do
+      tcp = Rbuv::Tcp.new(loop)
+
       on_close = double
-      expect(on_close).to receive(:call).once
+      expect(on_close).to receive(:call).once.with(tcp)
 
       no_on_close = double
       expect(no_on_close).not_to receive(:call)
 
-      tcp = Rbuv::Tcp.new(loop)
 
-      tcp.close do
-        on_close.call
+      tcp.close do |*args|
+        on_close.call(*args)
       end
 
-      tcp.close do
-        no_on_close.call
+      tcp.close do |*args|
+        no_on_close.call(*args)
       end
     end # context "#close"
+  end
 
-    context "#connect", loop: :running do
-      it "when server does not exist" do
-        c = Rbuv::Tcp.new(loop)
-        c.connect('127.0.0.1', 60000) do |client, error|
-          expect(error).to be_a_kind_of Rbuv::Error
-          c.close
+  context "#connect" do
+    context "when server does not exist" do
+      it "calls the block with tcp and an error" do
+        on_connect = double
+        expect(on_connect).to receive(:call).once.with(subject, Rbuv::Error.new('connection refused'))
+
+        loop.run do
+          subject.connect('127.0.0.1', 60000) do |*args|
+            on_connect.call(*args)
+            subject.close
+          end
         end
       end
+    end
 
-      it "when server exists" do
-        s = TCPServer.new '127.0.0.1', 60000
-        s.listen 10
+    context "when server exists" do
+      include_context "an open tcp server", '127.0.0.1', 60000
 
+      it "calls the block with tcp and nil error" do
         on_connect = double
-        expect(on_connect).to receive(:call).once
+        expect(on_connect).to receive(:call).once.with(subject, nil)
 
-        c = Rbuv::Tcp.new(loop)
-        c.connect('127.0.0.1', 60000) do
-          on_connect.call
-          c.close
-          s.close
+        loop.run do
+          subject.connect('127.0.0.1', 60000) do |*args|
+            on_connect.call(*args)
+            subject.close
+          end
         end
       end
     end
@@ -240,6 +248,21 @@ describe Rbuv::Tcp, :type => :handle do
 
   context "#write" do
     include_context "an open tcp server", '127.0.0.1', 60000
+
+    it "calls the block with " do
+      on_write = double
+      expect(on_write).to receive(:call).once.with(nil)
+
+      loop.run do
+        client = Rbuv::Tcp.new(loop)
+        client.connect('127.0.0.1', 60000) do
+          client.write('test string') do |*args|
+            on_write.call(*args)
+            client.close
+          end
+        end
+      end
+    end
 
     it "writes to the stream" do
       loop.run do
