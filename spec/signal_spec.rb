@@ -8,14 +8,12 @@ describe Rbuv::Signal do
 
   it "#start" do
     loop.run do
-      sig = Rbuv::Signal.new(loop)
-
       block = double
-      expect(block).to receive(:call).once.with(sig, 2)
+      expect(block).to receive(:call).once.with(subject, 2)
 
-      sig.start 2 do |*args|
+      subject.start 2 do |*args|
         block.call(*args)
-        sig.close
+        subject.close
       end
 
       `kill -2 #{Process.pid}`
@@ -24,14 +22,12 @@ describe Rbuv::Signal do
 
   it "#stop" do
     loop.run do
-      sig = Rbuv::Signal.new(loop)
-
       block = double
-      expect(block).to receive(:call).once.with(sig, 2)
+      expect(block).to receive(:call).once.with(subject, 2)
 
-      sig.start 2 do |*args|
+      subject.start 2 do |*args|
         block.call(*args)
-        sig.stop
+        subject.stop
       end
 
       `kill -2 #{Process.pid}`

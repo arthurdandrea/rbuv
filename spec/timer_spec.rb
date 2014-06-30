@@ -9,21 +9,17 @@ describe Rbuv::Timer do
   context "when timeout == 0" do
     context "#start" do
       it "when repeat == 0" do
-        timer = Rbuv::Timer.new(loop)
-
         block = double
         expect(block).to receive(:call).once
 
         loop.run do
-          timer.start 0, 0 do
+          subject.start 0, 0 do
             block.call
           end
         end
       end
 
       it "when repeat != 0" do
-        timer = Rbuv::Timer.new(loop)
-
         block = double
         count_limit = 10
         expect(block).to receive(:call).exactly(count_limit)
@@ -31,7 +27,7 @@ describe Rbuv::Timer do
         count = 0
 
         loop.run do
-          timer.start 0, 1 do |t|
+          subject.start 0, 1 do |t|
             block.call
             count += 1
             if count >= count_limit
@@ -43,13 +39,11 @@ describe Rbuv::Timer do
     end # context "#start"
 
     it "#stop" do
-      timer = Rbuv::Timer.new(loop)
-
       block = double
       expect(block).to receive(:call).once
 
       loop.run do
-        timer.start 0, 1 do |t|
+        subject.start 0, 1 do |t|
           block.call
           t.stop
         end
@@ -58,20 +52,16 @@ describe Rbuv::Timer do
 
     context "#active?" do
       it "should be false" do
-        timer = Rbuv::Timer.new(loop)
-
         loop.run do
-          timer.start 0, 0 do |t|
+          subject.start 0, 0 do |t|
             expect(t.active?).to be false
           end
         end
       end
 
       it "should be true" do
-        timer = Rbuv::Timer.new(loop)
-
         loop.run do
-          timer.start 0, 1 do |t|
+          subject.start 0, 1 do |t|
             expect(t.active?).to be true
             t.stop
           end
@@ -82,10 +72,8 @@ describe Rbuv::Timer do
     context "#repeat" do
       [0, 10, 100].each do |repeat|
         it "should eq #{repeat}" do
-          timer = Rbuv::Timer.new(loop)
-
           loop.run do
-            timer.start 0, repeat do |t|
+            subject.start 0, repeat do |t|
               expect(t.repeat).to eq repeat
               t.stop
             end
@@ -97,14 +85,12 @@ describe Rbuv::Timer do
     context "#repeat=" do
       [0, 10, 100].each do |repeat|
         it "should eq #{repeat}" do
-          timer = Rbuv::Timer.new(loop)
-
           loop.run do
-            timer.start 0, 0 do |t|
+            subject.start 0, 0 do |t|
               t.repeat = repeat
             end
           end
-          expect(timer.repeat).to eq repeat
+          expect(subject.repeat).to eq repeat
         end
       end
     end

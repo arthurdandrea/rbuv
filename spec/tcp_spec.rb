@@ -42,12 +42,11 @@ describe Rbuv::Tcp, :type => :handle do
     loop.run do
       skip "this spec does't pass on linux machines, see #1 on github"
       begin
-        tcp = Rbuv::Tcp.new(loop)
-        tcp.bind '127.0.0.1', 60000
+        subject.bind '127.0.0.1', 60000
 
         expect(port_in_use?(60000)).to be true
       ensure
-        tcp.close
+        subject.close
       end
 
       expect(port_in_use?(60000)).to be false
@@ -60,13 +59,12 @@ describe Rbuv::Tcp, :type => :handle do
 
       loop.run do
         begin
-          tcp = Rbuv::Tcp.new(loop)
-          tcp.bind '127.0.0.1', 60000
-          tcp.listen(10) { Rbuv.stop_loop }
+          subject.bind '127.0.0.1', 60000
+          subject.listen(10) { Rbuv.stop_loop }
 
           expect(port_in_use?(60000)).to be true
         ensure
-          tcp.close
+          subject.close
         end
 
         expect(port_in_use?(60000)).to be false
@@ -80,28 +78,26 @@ describe Rbuv::Tcp, :type => :handle do
         begin
           s = TCPServer.new '127.0.0.1', 60000
 
-          tcp = Rbuv::Tcp.new(loop)
-          tcp.bind '127.0.0.1', 60000
-          expect { tcp.listen(10) {} }.to raise_error
+          subject.bind '127.0.0.1', 60000
+          expect { subject.listen(10) {} }.to raise_error
         ensure
           s.close
-          tcp.close
+          subject.close
         end
       end
     end
 
     it "should call the on_connection callback when connection coming" do
-      tcp = Rbuv::Tcp.new(loop)
       on_connection = double
-      expect(on_connection).to receive(:call).once.with(tcp, nil)
+      expect(on_connection).to receive(:call).once.with(subject, nil)
 
       loop.run do
 
-        tcp.bind '127.0.0.1', 60000
+        subject.bind '127.0.0.1', 60000
 
-        tcp.listen(10) do |*args|
+        subject.listen(10) do |*args|
           on_connection.call(*args)
-          tcp.close
+          subject.close
         end
 
         sock = TCPSocket.new '127.0.0.1', 60000
@@ -111,18 +107,18 @@ describe Rbuv::Tcp, :type => :handle do
   end
 
   context "#accept", loop: :running do
+    before do
+      expect(port_in_use?(60000)).to be false
+      subject.bind '127.0.0.1', 60000
+    end
+
     context "with a client as a paramenter" do
       it "does not raise an error" do
-        expect(port_in_use?(60000)).to be false
-
-        tcp = Rbuv::Tcp.new(loop)
-        tcp.bind '127.0.0.1', 60000
-
         sock = nil
 
-        tcp.listen(10) do |s|
-          c = Rbuv::Tcp.new(loop)
-          expect { s.accept(c) }.not_to raise_error
+        subject.listen(10) do |s|
+          client = Rbuv::Tcp.new(loop)
+          expect { subject.accept(client) }.not_to raise_error
           sock.close
           tcp.close
         end
@@ -133,36 +129,25 @@ describe Rbuv::Tcp, :type => :handle do
 
     context "with no parameters" do
       it "returns a Rbuv::Tcp" do
-        expect(port_in_use?(60000)).to be false
-
-        tcp = Rbuv::Tcp.new(loop)
-        tcp.bind '127.0.0.1', 60000
-
         sock = nil
-
-        tcp.listen(10) do |s|
+        subject.listen(10) do |s|
           client = s.accept
           expect(client).to be_a Rbuv::Tcp
           sock.close
-          tcp.close
+          subject.close
         end
 
         sock = TCPSocket.new '127.0.0.1', 60000
       end
 
       it "does not return self" do
-        expect(port_in_use?(60000)).to be false
-
-        tcp = Rbuv::Tcp.new(loop)
-        tcp.bind '127.0.0.1', 60000
-
         sock = nil
 
-        tcp.listen(10) do |s|
+        subject.listen(10) do |s|
           client = s.accept
           expect(client).not_to be s
           sock.close
-          tcp.close
+          subject.close
         end
 
         sock = TCPSocket.new '127.0.0.1', 60000
@@ -210,11 +195,10 @@ describe Rbuv::Tcp, :type => :handle do
       expect(on_write).to receive(:call).once.with(nil)
 
       loop.run do
-        client = Rbuv::Tcp.new(loop)
-        client.connect('127.0.0.1', 60000) do
-          client.write('test string') do |*args|
+        subject.connect('127.0.0.1', 60000) do
+          subject.write('test string') do |*args|
             on_write.call(*args)
-            client.close
+            subject.close
           end
         end
       end
@@ -222,10 +206,9 @@ describe Rbuv::Tcp, :type => :handle do
 
     it "writes to the stream" do
       loop.run do
-        client = Rbuv::Tcp.new(loop)
-        client.connect('127.0.0.1', 60000) do
-          client.write('test string') do
-            client.close
+        subject.connect('127.0.0.1', 60000) do
+          subject.write('test string') do
+            subject.close
           end
         end
       end
