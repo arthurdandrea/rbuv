@@ -43,30 +43,30 @@ shared_examples Rbuv::Handle do
 
     it "call once" do
       on_close = double
-      expect(on_close).to receive(:call).once
+      expect(on_close).to receive(:call).once.with(subject)
 
       loop.run do
-        subject.close do
-          on_close.call
+        subject.close do |*args|
+          on_close.call(*args)
         end
       end
     end
 
     it "call multi-times" do
       on_close = double
-      expect(on_close).to receive(:call).once
+      expect(on_close).to receive(:call).once.with(subject)
 
       no_on_close = double
       expect(no_on_close).not_to receive(:call)
 
       loop.run do
 
-        subject.close do
-          on_close.call
+        subject.close do |*args|
+          on_close.call(*args)
         end
 
-        subject.close do
-          no_on_close.call
+        subject.close do |*args|
+          no_on_close.call(*args)
         end
       end
     end

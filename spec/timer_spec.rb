@@ -10,11 +10,11 @@ describe Rbuv::Timer do
     context "#start" do
       it "when repeat == 0" do
         block = double
-        expect(block).to receive(:call).once
+        expect(block).to receive(:call).once.with(subject)
 
         loop.run do
-          subject.start 0, 0 do
-            block.call
+          subject.start 0, 0 do |*args|
+            block.call(*args)
           end
         end
       end
@@ -22,16 +22,16 @@ describe Rbuv::Timer do
       it "when repeat != 0" do
         block = double
         count_limit = 10
-        expect(block).to receive(:call).exactly(count_limit)
+        expect(block).to receive(:call).exactly(count_limit).with(subject)
 
         count = 0
 
         loop.run do
-          subject.start 0, 1 do |t|
-            block.call
+          subject.start 0, 1 do |*args|
+            block.call(*args)
             count += 1
             if count >= count_limit
-              t.stop
+              subject.stop
             end
           end
         end
@@ -40,12 +40,12 @@ describe Rbuv::Timer do
 
     it "#stop" do
       block = double
-      expect(block).to receive(:call).once
+      expect(block).to receive(:call).once.with(subject)
 
       loop.run do
-        subject.start 0, 1 do |t|
-          block.call
-          t.stop
+        subject.start 0, 1 do |*args|
+          block.call(*args)
+          subject.stop
         end
       end
     end
@@ -54,7 +54,7 @@ describe Rbuv::Timer do
       it "should be false" do
         loop.run do
           subject.start 0, 0 do |t|
-            expect(t.active?).to be false
+            expect(subject.active?).to be false
           end
         end
       end
@@ -62,8 +62,8 @@ describe Rbuv::Timer do
       it "should be true" do
         loop.run do
           subject.start 0, 1 do |t|
-            expect(t.active?).to be true
-            t.stop
+            expect(subject.active?).to be true
+            subject.stop
           end
         end
       end
