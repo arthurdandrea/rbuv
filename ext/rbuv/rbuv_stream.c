@@ -185,7 +185,7 @@ VALUE rbuv_stream_write(VALUE self, VALUE data) {
 
 
   req = malloc(sizeof(*req));
-  req->cb_on_write = rb_block_proc();
+  req->cb_on_write = block;
   switch(TYPE(rbuv_stream->cbs_on_write)) {
     case T_DATA: // Proc
       rbuv_stream->cbs_on_write = _rbuv_ary_new_from_2_args(req->cb_on_write, rbuv_stream->cbs_on_write);
