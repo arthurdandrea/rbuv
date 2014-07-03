@@ -20,6 +20,8 @@
 #include "rbuv_signal.h"
 #include "rbuv_poll.h"
 #include "rbuv_prepare.h"
+#include "rbuv_check.h"
+#include "rbuv_async.h"
 
 extern ID id_call;
 
