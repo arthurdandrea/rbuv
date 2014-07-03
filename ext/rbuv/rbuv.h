@@ -18,6 +18,8 @@
 #include "rbuv_stream.h"
 #include "rbuv_tcp.h"
 #include "rbuv_signal.h"
+#include "rbuv_poll.h"
+#include "rbuv_prepare.h"
 
 extern ID id_call;
 

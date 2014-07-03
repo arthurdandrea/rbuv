@@ -22,6 +22,8 @@ void Init_rbuv() {
   Init_rbuv_tcp();
   Init_rbuv_signal();
   Init_rbuv_poll();
+  Init_rbuv_prepare();
+  Init_rbuv_check();
 }
 
 /* Document-module: Rbuv
