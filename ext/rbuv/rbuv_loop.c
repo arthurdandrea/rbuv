@@ -8,10 +8,47 @@ typedef struct {
 VALUE cRbuvLoop;
 
 /* Methods */
+
+/*
+ * Runs the event loop until the reference count drops to zero.
+ * @yield If the block is passed, calls it right in the first loop iteration.
+ * @yieldparam loop [self] the loop itself
+ * @return [self] itself
+ */
 static VALUE rbuv_loop_run(VALUE loop);
+
+/*
+ * This function will stop the event loop by forcing {#run} or {#run_once} or
+ * {#run_nowait} to end as soon as possible, but not sooner than the next loop
+ * iteration.
+ *
+ * If this function was called before blocking for i/o, the loop won't
+ * block for i/o on this iteration.
+ *
+ * @return [self] itself
+ */
 static VALUE rbuv_loop_stop(VALUE loop);
+
+/*
+ * Poll for new events once. Note that this function blocks if
+ * there are no pending events.
+ *
+ * @yield (see #run)
+ * @yieldparam loop (see #run)
+ * @return (see #run)
+ */
 static VALUE rbuv_loop_run_once(VALUE loop);
+
+/*
+ * Poll for new events once but don't block if there are no
+ * pending events.
+ *
+ * @yield (see #run)
+ * @yieldparam loop (see #run)
+ * @return (see #run)
+ */
 static VALUE rbuv_loop_run_nowait(VALUE loop);
+
 static VALUE rbuv_loop_get_handles(VALUE loop);
 static VALUE rbuv_loop_uv_active_handles(VALUE loop);
 static VALUE rbuv_loop_inspect(VALUE loop);
@@ -40,6 +77,22 @@ void Init_rbuv_loop() {
   rb_define_singleton_method(cRbuvLoop, "default", rbuv_loop_s_default, 0);
 }
 
+/*
+ * Document-class: Rbuv::Loop
+ *
+ * @!attribute [r] handles
+ *   Every handle associated with this loop, note that handles are disassociated
+ *   when they are closed.
+ *   @return [Array<Rbuv::Handle>] every handle associated with this loop.
+ *
+ * @!attribute [r] default
+ *   @!scope class
+ *   @return [Rbuv::Loop] the default loop
+ *
+ * @!method initialize
+ *   Creates a new event loop.
+ *   @return [Rbuv::Loop] a new loop
+ */
 VALUE rbuv_loop_alloc(VALUE klass) {
   rbuv_loop_t *rbuv_loop;
   VALUE loop;

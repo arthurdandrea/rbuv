@@ -37,14 +37,90 @@ typedef struct {
 VALUE cRbuvStream;
 
 /* Methods */
+
+/* @overload listen(backlog)
+ *   Listen for incomining connections
+ *
+ *   @param backlog [Number]
+ *   @yield callback
+ *   @yieldparam stream [self]
+ *   @yieldparam error [Rbuv::Error, nil]
+ *   @return [self] itself
+ */
 static VALUE rbuv_stream_listen(VALUE self, VALUE backlog);
+
+/*
+ * @overload accept(client)
+ * This call is used in conjunction with {#listen} to accept incoming
+ * connections. Call {#accept} after the {#listen} block is called to accept
+ * the connection.
+ *
+ * When the {#listen} block is called it is guaranteed that +accept+ will
+ * complete successfully the first time. If you attempt to use it more than
+ * once, it may fail. It is suggested to only call {#accept} once per
+ * {#listen} block call.
+ *
+ * @param client [Rbuv::Stream] a fresh stream object to be associated with the
+ *   accepted connection
+ * @return [self] itself
+ */
 static VALUE rbuv_stream_accept(VALUE self, VALUE client);
+
+/*
+ * Check if this stream is readable.
+ * @return [Boolean] +true+ if this stream is readable, +false+ otherwise
+ */
 static VALUE rbuv_stream_is_readable(VALUE self);
+
+/*
+ * Check if this stream is writable.
+ * @return [Boolean] +true+ if this stream is writable, +false+ otherwise
+ */
 static VALUE rbuv_stream_is_writable(VALUE self);
+
+/*
+ * @overload shutdown
+ *   Shutdown the outgoing (write) side of a duplex stream. It waits for
+ *   pending write requests to complete.
+ *   @yield The block is called after shutdown is complete.
+ *   @return [self] itself
+ *   @todo Implement it
+ */
 static VALUE rbuv_stream_shutdown(VALUE self);
+
+/*
+ * Read data from an incoming stream.
+ *
+ * @yield The block will be called made several times until there is no more
+ *   data to read or {#read_stop} is called. When we've reached EOF, +error+
+ *   will be set to an instance of +EOFError+.
+ * @yieldparam data [String, nil] the readed data or +nil+ if the operation has
+ *   not succeded
+ * @yieldparam error [Rbuv::Error, EOFError, nil] an Error or +nil+ if the
+ *   operation has succeded
+ * @return [self] itself
+ */
 static VALUE rbuv_stream_read_start(VALUE self);
 //static VALUE rbuv_stream_read2_start(VALUE self, VALUE client);
+
+/* Stop reading data
+ * @return [self] itself
+ */
 static VALUE rbuv_stream_read_stop(VALUE self);
+
+/* @overload write(data)
+ *   Write data to stream. Buffers are written in order.
+ *   @example
+ *     stream.write("12") do |error| ... end
+ *     stream.write("34") do |error|
+ *       # if no error has happend
+ *       # "1234" has been written to this stream
+ *     end
+ *   @yield The block is called when the write operation has finished
+ *   @yieldparam error [Rbuv::Error, nil] an error if the operation has failed,
+ *     otherwise +nil+
+ *   @return [self] itself
+ */
 static VALUE rbuv_stream_write(VALUE self, VALUE data);
 //static VALUE rbuv_stream_write2(VALUE self);
 
@@ -76,6 +152,10 @@ void Init_rbuv_stream() {
 //  rb_define_method(cRbuvStream, "write2", rbuv_stream_write2, 1);
 }
 
+/*
+ * Document-class: Rbuv::Stream < Rbuv::Handle
+ * @abstract
+ */
 VALUE rbuv_stream_listen(VALUE self, VALUE backlog) {
   rbuv_stream_t *rbuv_server;
   VALUE block;

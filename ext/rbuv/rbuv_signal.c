@@ -15,6 +15,9 @@ typedef struct _uv_signal_on_signal_no_gvl_arg_s {
 VALUE cRbuvSignal;
 
 /* Allocator/deallocator */
+/*
+ * @api private
+ */
 static VALUE rbuv_signal_s_new(int argc, VALUE *argv, VALUE klass);
 static void rbuv_signal_mark(rbuv_signal_t *rbuv_signal);
 static void rbuv_signal_free(rbuv_signal_t *rbuv_signal);
@@ -22,7 +25,24 @@ static void rbuv_signal_free(rbuv_signal_t *rbuv_signal);
 static VALUE rbuv_signal_alloc(VALUE klass, VALUE loop);
 
 /* Methods */
+
+/* @overload start(signum)
+ * Start watching for signal +signum+ with this handle.
+ *
+ * @param signum [Number] the signal number to watch for
+ *
+ * @yield Calls the block when the +signum+ is recieved
+ * @yieldparam signal [self] itself
+ * @yieldparam signum [Number] the signal number recieved
+ * @return [self] itself
+ */
 static VALUE rbuv_signal_start(VALUE self, VALUE signum);
+
+/*
+ * Stop watching for signals with this handle.
+ *
+ * @return [self] itself
+ */
 static VALUE rbuv_signal_stop(VALUE self);
 
 /* Private methods */
@@ -37,7 +57,16 @@ void Init_rbuv_signal() {
   rb_define_method(cRbuvSignal, "start", rbuv_signal_start, 1);
   rb_define_method(cRbuvSignal, "stop", rbuv_signal_stop, 0);
 }
-
+/*
+ * Document-class: Rbuv::Signal < Rbuv::Handle
+ *
+ * @!method initialize(loop=nil)
+ *   Creates a new handle to watch for signals.
+ *
+ *   @param loop [Rbuv::Loop, nil] loop object where this handle runs, if it is
+ *     +nil+ then it the runs the handle in the {Rbuv::Loop.default}
+ *   @return [Rbuv::Signal]
+ */
 VALUE rbuv_signal_s_new(int argc, VALUE *argv, VALUE klass) {
   VALUE loop;
   rb_scan_args(argc, argv, "01", &loop);

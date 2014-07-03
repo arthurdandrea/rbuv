@@ -16,6 +16,10 @@ typedef struct {
 } _uv_timer_on_available_no_gvl_arg_t;
 
 /* Allocator/deallocator */
+
+/* @see #initialize
+ * @api private
+ */
 static VALUE rbuv_poll_s_new(int argc, VALUE *argv, VALUE klass);
 static void rbuv_poll_mark(rbuv_poll_t *rbuv_poll);
 static void rbuv_poll_free(rbuv_poll_t *rbuv_poll);
@@ -23,7 +27,30 @@ static void rbuv_poll_free(rbuv_poll_t *rbuv_poll);
 static VALUE rbuv_poll_alloc(VALUE klass, VALUE loop, VALUE fd);
 
 /* Methods */
+
+/* @overload start(events)
+ *  Starts polling the file descriptor.
+ *  @note The user should not close the socket while +Rbuv::Poll+ is active.
+ *    If the user does that anyway, the block *may* be called reporting an error
+ *    but this is not guaranteed.
+ *  @note Calling +start+ on an +Rbuv::Poll+ that is already active is fine.
+ *    Doing so will update the events mask that is being watched for.
+ *  @param [Fixnum] events a bitmask consisting made up of
+ *    {Rbuv::Poll::READABLE} and {Rbuv::Poll::WRITABLE}
+ *  @yield calls the block when any +event+ is detected on +fd+
+ *  @yieldparam poll [self] itself
+ *  @yieldparam events [Fixnum, nil]
+ *    the detected events as a bitmask made up of {Rbuv::Poll::READABLE} and
+ *    {Rbuv::Poll::WRITABLE}, if succeded
+ *  @yieldparam error [Rbuv::Error, nil] the error, if not succeded
+ *  @return [self]
+ */
 static VALUE rbuv_poll_start(VALUE self, VALUE events);
+
+/*
+ * Stops polling the file descriptor.
+ * @return [self]
+ */
 static VALUE rbuv_poll_stop(VALUE self);
 
 /* Private methods */
@@ -37,10 +64,34 @@ void Init_rbuv_poll() {
 
   rb_define_method(cRbuvPoll, "start", rbuv_poll_start, 1);
   rb_define_method(cRbuvPoll, "stop", rbuv_poll_stop, 0);
+
+  /*
+   * Represent a Readable event. Used to form bitmasks.
+   * @note Different libuv versions may have different values for this constant,
+   *   so don't relay on this always being the same on different environments.
+   */
   rb_define_const(cRbuvPoll, "READABLE", INT2FIX(UV_READABLE));
+
+  /*
+   * Represent a Writable event. Used to form bitmasks.
+   * @note Different libuv versions may have different values for this constant,
+   *   so don't relay on this always being the same on different environments.
+   */
   rb_define_const(cRbuvPoll, "WRITABLE", INT2FIX(UV_WRITABLE));
 }
 
+/*
+ * Document-class: Rbuv::Poll < Rbuv::Handle
+ * @!method initialize
+ *   Creates a new poll watcher
+ *   @overload initialize(loop, fd)
+ *    @param [Rbuv::Loop] loop where this handle runs.
+ *    @param [Fixnum] fd file descriptor.
+ *   @overload initialize(fd)
+ *    Uses the {Rbuv::Loop.default} to run this handle
+ *    @param [Fixnum] fd file descriptor.
+ *   @return [Rbuv::Poll]
+ */
 VALUE rbuv_poll_s_new(int argc, VALUE *argv, VALUE klass) {
   VALUE loop;
   VALUE fd;
@@ -92,11 +143,6 @@ void rbuv_poll_free(rbuv_poll_t *rbuv_poll) {
   rbuv_handle_free((rbuv_handle_t *)rbuv_poll);
 }
 
-/**
- * start the poll.
- * @param events the bitmask of events to listen
- * @return self
- */
 VALUE rbuv_poll_start(VALUE self, VALUE events) {
   VALUE block;
   int uv_events;

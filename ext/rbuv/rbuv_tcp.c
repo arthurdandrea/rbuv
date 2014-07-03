@@ -17,6 +17,11 @@ typedef struct {
 VALUE cRbuvTcp;
 
 /* Allocator/deallocator */
+
+/*
+ * @see #initialize
+ * @api private
+ */
 static VALUE rbuv_tcp_s_new(int argc, VALUE *argv, VALUE klass);
 static void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp);
 static void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp);
@@ -37,22 +42,98 @@ static VALUE rbuv_tcp_alloc(VALUE klass, VALUE loop);
  uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock)
  uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable)
  */
+
+/* @overload bind(ip, port)
+ * Bind this tcp object to the given address and port.
+ * @param ip [String] the ip address to bind to
+ * @param port [Number] the port to bind to
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port);
 //static VALUE rbuv_tcp_bind6(VALUE self, VALUE ip, VALUE port);
+
+/* @overload connect(ip, port)
+ * Connect this tcp object to the given address and port.
+ * @param ip [String] the ip address to bind to
+ * @param port [Number] the port to bind to
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port);
 //static VALUE rbuv_tcp_connect6(VALUE self, VALUE ip, VALUE port);
+
+/*
+ * This call is used in conjunction with {#listen} to accept incoming
+ * connections. Call {#accept} after the {#listen} block is called to accept
+ * the connection.
+ *
+ * When the {#listen} block is called it is guaranteed that +accept+ will
+ * complete successfully the first time. If you attempt to use it more than
+ * once, it may fail. It is suggested to only call {#accept} once per
+ * {#listen} block call.
+ *
+ * @overload accept
+ *   @return [Rbuv::Tcp] a new {Rbuv::Tcp} object associated with the accepted
+ *     connection
+ * @overload accept(client)
+ *   @param (see Rbuv::Stream#accept)
+ *   @return (see Rbuv::Stream#accept)
+ */
 static VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self);
+
+/* @overload enable_keepalive(delay)
+ * Enable TCP keep-alive.
+ *
+ * @param delay [Number] the initial delay in seconds
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_enable_keepalive(VALUE self, VALUE delay);
+
+/* @overload disable_keepalive
+ * Disable TCP keep-alive.
+ *
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_disable_keepalive(VALUE self);
+
+/* @overload enable_nodelay
+ * Disable Nagle's algorithm.
+ *
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_enable_nodelay(VALUE self);
+
+/* @overload disable_nodelay
+ * Enable Nagle's algorithm.
+ *
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_disable_nodelay(VALUE self);
+
+/* @overload enable_simultaneous_accepts
+ * Enable simultaneous asynchronous accept requests that are queued by the
+ * operating system when listening for new tcp connections.
+ * This setting is used to tune a tcp server for the desired performance.
+ * Having simultaneous accepts can significantly improve the rate of
+ * accepting connections (which is why it is enabled by default) but
+ * may lead to uneven load distribution in multi-process setups.
+ *
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_enable_simultaneous_accepts(VALUE self);
+
+/* @overload disable_simultaneous_accepts
+ * Disable simultaneous asynchronous accept requests that are queued by the
+ * operating system when listening for new tcp connections.
+ * @see #enable_simultaneous_accepts
+ *
+ * @return [self] itself
+ */
 static VALUE rbuv_tcp_disable_simultaneous_accepts(VALUE self);
 static VALUE rbuv_tcp_getpeername(VALUE self);
 static VALUE rbuv_tcp_getsockname(VALUE self);
-static VALUE rbuv_tcp_extractname(struct sockaddr* sockname, int namelen);
 
 /* Private methods */
+static VALUE rbuv_tcp_extractname(struct sockaddr* sockname, int namelen);
 static void _uv_tcp_on_connect(uv_connect_t *uv_connect, int status);
 static void _uv_tcp_on_connect_no_gvl(_uv_tcp_on_connect_arg_t *arg);
 extern void __uv_stream_on_connection_no_gvl(uv_stream_t *uv_stream, int status);
@@ -79,6 +160,22 @@ void Init_rbuv_tcp() {
   rb_define_method(cRbuvTcp, "sockname", rbuv_tcp_getsockname, 0);
 }
 
+/*
+ * Document-class: Rbuv::Tcp < Rbuv::Stream
+ *
+ * @!attribute [r] sockname
+ *   @return [Array(String, Number)] the socket ip and port
+ *
+ * @!attribute [r] peername
+ *   @return [Array(String, Number)] the peer ip and port
+ *
+ * @!method initialize(loop=nil)
+ *   Create a new handle to deal with a TCP.
+ *
+ *   @param loop [Rbuv::Loop, nil] loop object where this handle runs, if it is
+ *     +nil+ then it the runs the handle in the {Rbuv::Loop.default}
+ *   @return [Rbuv::Tcp]
+ */
 VALUE rbuv_tcp_s_new(int argc, VALUE *argv, VALUE klass) {
   VALUE loop;
   rb_scan_args(argc, argv, "01", &loop);

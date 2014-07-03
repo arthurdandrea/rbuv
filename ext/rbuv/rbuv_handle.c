@@ -7,11 +7,57 @@ typedef struct {
 VALUE cRbuvHandle;
 
 /* Methods */
+
+/*
+ * Manually modify the event loop's reference count. Useful to revert a call to
+ * {#unref}
+ *
+ * @return [self] returns itself
+ * @raise [Rbuv::Error] if handle is closed
+ */
 static VALUE rbuv_handle_ref(VALUE self);
+
+/*
+ * Manually modify the event loop's reference count. Useful if the user wants
+ * to have a handle or timeout that doesn't keep the loop alive.
+ *
+ * @return [self] returns itself
+ * @raise [Rbuv::Error] if handle is closed
+ */
 static VALUE rbuv_handle_unref(VALUE self);
+
+/*
+ * Request handle to be closed.
+ *
+ * @overload close
+ * @overload close
+ *   @yield The block will be called asynchronously after this handle is closed.
+ *   @yieldparam handle [self] the handle itself
+ * @return [self] returns itself
+ */
 static VALUE rbuv_handle_close(VALUE self);
+
+/*
+ * Used to determine whether a handle is active
+ *
+ * @return [Boolean] true if this +handle+ is active, +false+ otherwise
+ * @raise [Rbuv::Error] if handle is closed
+ */
 static VALUE rbuv_handle_is_active(VALUE self);
+
+/*
+ * Used to determine whether a handle is closed
+ *
+ * @return [Boolean] true if this +handle+ is closed, +false+ otherwise
+ */
 static VALUE rbuv_handle_is_closed(VALUE self);
+
+/*
+ * Used to determine whether a handle is closing
+ *
+ * @return [Boolean] true if this +handle+ is closing, +false+ otherwise
+ * @raise [Rbuv::Error] if handle is closed
+ */
 static VALUE rbuv_handle_is_closing(VALUE self);
 
 /* Private methods */
@@ -31,10 +77,18 @@ void Init_rbuv_handle() {
   rb_define_method(cRbuvHandle, "closed?", rbuv_handle_is_closed, 0);
 }
 
-// this is called when the ruby CG is freeing a Rbuv::Loop
-// the loop in turn call this method for each associated handle, here we remove
-// any reference to the dying loop, for libuv happiness we also close the handle
-// if it has not been closed before
+/*
+ * Document-class: Rbuv::Handle
+ * @abstract
+ */
+
+/*
+ * This is called when the Ruby CG is freeing a Rbuv::Loop
+ *
+ * The loop free method in turn call this method for each associated handle,
+ * where we remove any reference to the dying loop, for libuv happiness we also
+ * close the handle if it has not been closed before.
+ */
 void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle) {
   rbuv_handle->loop = Qnil;
   if (rbuv_handle->uv_handle != NULL) {
@@ -49,7 +103,9 @@ void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle) {
   }
 }
 
-// this is called when the ruby CG is freeing a Rbuv::Handle
+/*
+ * This is called when the Ruby CG is freeing a Rbuv::Handle
+ */
 void rbuv_handle_free(rbuv_handle_t *rbuv_handle) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_handle: %p, uv_handle: %p", rbuv_handle, rbuv_handle->uv_handle);
   if ((TYPE(rbuv_handle->loop) != T_NONE) && (rbuv_handle->loop != Qnil)) {

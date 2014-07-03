@@ -24,6 +24,22 @@ void Init_rbuv() {
   Init_rbuv_poll();
 }
 
+/* Document-module: Rbuv
+ *
+ * @!attribute [r] version
+ *   @!scope class
+ *   The libuv version packed into a single integer
+ *   @return [Number] Returns the libuv version packed into a single integer.
+ *     8 bits are used for each component, with the patch number stored in the 8
+ *     least significant bits. E.g. for libuv 1.2.3 this would return 0x010203.
+ *
+ * @!attribute [r] version_string
+ *   @!scope class
+ *   The libuv version as a string
+ *   @return [String] the libuv version number as a string. For non-release
+ *     versions "-pre" is appended, so the version number could be "1.2.3-pre".
+ */
+
 VALUE rbuv_version(VALUE self) {
   return UINT2NUM(uv_version());
 }
