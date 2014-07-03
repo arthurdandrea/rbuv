@@ -24,6 +24,7 @@ void Init_rbuv() {
   Init_rbuv_poll();
   Init_rbuv_prepare();
   Init_rbuv_check();
+  Init_rbuv_async();
 }
 
 /* Document-module: Rbuv
