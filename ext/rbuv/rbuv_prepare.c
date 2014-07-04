@@ -123,7 +123,7 @@ VALUE rbuv_prepare_start(VALUE self) {
   rb_need_block();
   block = rb_block_proc();
 
-  Data_Get_Struct(self, rbuv_prepare_t, rbuv_prepare);
+  Data_Get_Handle_Struct(self, rbuv_prepare_t, rbuv_prepare);
   rbuv_prepare->cb_on_prepare = block;
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_prepare: %p, uv_handle: %p, _uv_prepare_on_prepare: %p, prepare: %s",
@@ -137,7 +137,7 @@ VALUE rbuv_prepare_start(VALUE self) {
 VALUE rbuv_prepare_stop(VALUE self) {
   rbuv_prepare_t *rbuv_prepare;
 
-  Data_Get_Struct(self, rbuv_prepare_t, rbuv_prepare);
+  Data_Get_Handle_Struct(self, rbuv_prepare_t, rbuv_prepare);
 
   uv_prepare_stop(rbuv_prepare->uv_handle);
 
@@ -158,7 +158,7 @@ void _uv_prepare_on_prepare_no_gvl(_uv_prepare_on_prepare_no_gvl_arg_t *arg) {
   rbuv_prepare_t *rbuv_prepare;
 
   prepare = (VALUE)uv_prepare->data;
-  Data_Get_Struct(prepare, struct rbuv_prepare_s, rbuv_prepare);
+  Data_Get_Handle_Struct(prepare, struct rbuv_prepare_s, rbuv_prepare);
   if (status < 0) {
     uv_err_t err = uv_last_error(uv_prepare->loop);
     error = rb_exc_new2(eRbuvError, uv_strerror(err));

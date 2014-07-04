@@ -164,7 +164,7 @@ VALUE rbuv_stream_listen(VALUE self, VALUE backlog) {
   rb_need_block();
   block = rb_block_proc();
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_server);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_server);
   rbuv_server->cb_on_connection = block;
 
   uv_backlog = FIX2INT(backlog);
@@ -186,8 +186,8 @@ VALUE rbuv_stream_accept(VALUE self, VALUE client) {
   rbuv_stream_t *rbuv_server;
   rbuv_stream_t *rbuv_client;
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_server);
-  Data_Get_Struct(client, rbuv_stream_t, rbuv_client);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_server);
+  Data_Get_Handle_Struct(client, rbuv_stream_t, rbuv_client);
 
   RBUV_CHECK_UV_RETURN(uv_accept(rbuv_server->uv_handle, rbuv_client->uv_handle), rbuv_client->uv_handle->loop);
 
@@ -197,7 +197,7 @@ VALUE rbuv_stream_accept(VALUE self, VALUE client) {
 VALUE rbuv_stream_is_readable(VALUE self) {
   rbuv_stream_t *rbuv_stream;
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_stream);
 
   return uv_is_readable(rbuv_stream->uv_handle) ? Qtrue : Qfalse;
 }
@@ -205,7 +205,7 @@ VALUE rbuv_stream_is_readable(VALUE self) {
 VALUE rbuv_stream_is_writable(VALUE self) {
   rbuv_stream_t *rbuv_stream;
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_stream);
 
   return uv_is_writable(rbuv_stream->uv_handle) ? Qtrue : Qfalse;
 }
@@ -213,7 +213,7 @@ VALUE rbuv_stream_is_writable(VALUE self) {
 VALUE rbuv_stream_shutdown(VALUE self) {
   rbuv_stream_t *rbuv_stream;
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_stream);
 
   rb_raise(rb_eNotImpError, __func__);
 
@@ -227,7 +227,7 @@ VALUE rbuv_stream_read_start(VALUE self) {
   rb_need_block();
   block = rb_block_proc();
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_stream);
   rbuv_stream->cb_on_read = block;
 
   uv_read_start(rbuv_stream->uv_handle, _uv_alloc_buffer, _uv_stream_on_read);
@@ -238,7 +238,7 @@ VALUE rbuv_stream_read_start(VALUE self) {
 VALUE rbuv_stream_read_stop(VALUE self) {
   rbuv_stream_t *rbuv_stream;
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_stream);
 
   uv_read_stop(rbuv_stream->uv_handle);
 
@@ -255,7 +255,7 @@ VALUE rbuv_stream_write(VALUE self, VALUE data) {
   rb_need_block();
   VALUE block = rb_block_proc();
 
-  Data_Get_Struct(self, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_stream);
 
   RBUV_DEBUG_LOG_DETAIL("self: %s, block: %s, rbuv_server: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)),
@@ -314,7 +314,7 @@ void __uv_stream_on_connection_no_gvl(uv_stream_t *uv_stream, int status) {
   RBUV_DEBUG_LOG("uv_stream: %p, status: %d", uv_stream, status);
 
   stream = (VALUE)uv_stream->data;
-  Data_Get_Struct(stream, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(stream, rbuv_stream_t, rbuv_stream);
   on_connection = rbuv_stream->cb_on_connection;
 
   RBUV_DEBUG_LOG_DETAIL("stream: %s, on_connection: %s",
@@ -378,7 +378,7 @@ void _uv_stream_on_read_no_gvl(_uv_stream_on_read_arg_t *arg) {
   RBUV_DEBUG_LOG("uv_stream: %p, nread: %lu", uv_stream, nread);
 
   stream = (VALUE)uv_stream->data;
-  Data_Get_Struct(stream, rbuv_stream_t, rbuv_stream);
+  Data_Get_Handle_Struct(stream, rbuv_stream_t, rbuv_stream);
   on_read = rbuv_stream->cb_on_read;
   RBUV_DEBUG_LOG_DETAIL("stream: %s, on_read: %s",
                         RSTRING_PTR(rb_inspect(stream)),

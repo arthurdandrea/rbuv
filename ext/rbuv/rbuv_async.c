@@ -121,7 +121,7 @@ VALUE rbuv_async_send(VALUE self) {
   VALUE block;
   rbuv_async_t *rbuv_async;
 
-  Data_Get_Struct(self, rbuv_async_t, rbuv_async);
+  Data_Get_Handle_Struct(self, rbuv_async_t, rbuv_async);
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_async: %p, uv_handle: %p, _uv_async_on_async: %p, async: %s",
                         rbuv_async, rbuv_async->uv_handle, _uv_async_on_async,
@@ -145,7 +145,7 @@ void _uv_async_on_async_no_gvl(_uv_async_on_async_no_gvl_arg_t *arg) {
   rbuv_async_t *rbuv_async;
 
   async = (VALUE)uv_async->data;
-  Data_Get_Struct(async, struct rbuv_async_s, rbuv_async);
+  Data_Get_Handle_Struct(async, struct rbuv_async_s, rbuv_async);
   if (status < 0) {
     uv_err_t err = uv_last_error(uv_async->loop);
     error = rb_exc_new2(eRbuvError, uv_strerror(err));

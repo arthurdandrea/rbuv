@@ -123,7 +123,7 @@ VALUE rbuv_signal_start(VALUE self, VALUE signum) {
   block = rb_block_proc();
   uv_signum = NUM2INT(signum);
 
-  Data_Get_Struct(self, rbuv_signal_t, rbuv_signal);
+  Data_Get_Handle_Struct(self, rbuv_signal_t, rbuv_signal);
   rbuv_signal->cb_on_signal = block;
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_signal: %p, uv_handle: %p, _uv_signal_on_signal: %p, signal: %s",
@@ -137,7 +137,7 @@ VALUE rbuv_signal_start(VALUE self, VALUE signum) {
 VALUE rbuv_signal_stop(VALUE self) {
   rbuv_signal_t *rbuv_signal;
 
-  Data_Get_Struct(self, rbuv_signal_t, rbuv_signal);
+  Data_Get_Handle_Struct(self, rbuv_signal_t, rbuv_signal);
 
   uv_signal_stop(rbuv_signal->uv_handle);
 
@@ -157,7 +157,7 @@ void _uv_signal_on_signal_no_gvl(_uv_signal_on_signal_no_gvl_arg_t *arg) {
   rbuv_signal_t *rbuv_signal;
 
   signal = (VALUE)uv_signal->data;
-  Data_Get_Struct(signal, struct rbuv_signal_s, rbuv_signal);
+  Data_Get_Handle_Struct(signal, struct rbuv_signal_s, rbuv_signal);
 
   rb_funcall(rbuv_signal->cb_on_signal, id_call, 2, signal, INT2FIX(signum));
 }

@@ -132,7 +132,7 @@ VALUE rbuv_timer_start(VALUE self, VALUE timeout, VALUE repeat) {
   uv_timeout = NUM2ULL(timeout);
   uv_repeat = NUM2ULL(repeat);
 
-  Data_Get_Struct(self, rbuv_timer_t, rbuv_timer);
+  Data_Get_Handle_Struct(self, rbuv_timer_t, rbuv_timer);
   rbuv_timer->cb_on_timeout = block;
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_timer: %p, uv_handle: %p, _uv_timer_on_timeout: %p, timer: %s",
@@ -151,7 +151,7 @@ VALUE rbuv_timer_start(VALUE self, VALUE timeout, VALUE repeat) {
 VALUE rbuv_timer_stop(VALUE self) {
   rbuv_timer_t *rbuv_timer;
 
-  Data_Get_Struct(self, rbuv_timer_t, rbuv_timer);
+  Data_Get_Handle_Struct(self, rbuv_timer_t, rbuv_timer);
 
   uv_timer_stop(rbuv_timer->uv_handle);
 
@@ -162,7 +162,7 @@ VALUE rbuv_timer_repeat_get(VALUE self) {
   rbuv_timer_t *rbuv_timer;
   VALUE repeat;
 
-  Data_Get_Struct(self, rbuv_timer_t, rbuv_timer);
+  Data_Get_Handle_Struct(self, rbuv_timer_t, rbuv_timer);
   repeat = ULL2NUM(uv_timer_get_repeat(rbuv_timer->uv_handle));
 
   return repeat;
@@ -174,7 +174,7 @@ VALUE rbuv_timer_repeat_set(VALUE self, VALUE repeat) {
 
   uv_repeat = NUM2ULL(repeat);
 
-  Data_Get_Struct(self, rbuv_timer_t, rbuv_timer);
+  Data_Get_Handle_Struct(self, rbuv_timer_t, rbuv_timer);
 
   uv_timer_set_repeat(rbuv_timer->uv_handle, uv_repeat);
 
@@ -194,7 +194,7 @@ void _uv_timer_on_timeout_no_gvl(_uv_timer_on_timeout_no_gvl_arg_t *arg) {
   rbuv_timer_t *rbuv_timer;
 
   timer = (VALUE)uv_timer->data;
-  Data_Get_Struct(timer, struct rbuv_timer_s, rbuv_timer);
+  Data_Get_Handle_Struct(timer, struct rbuv_timer_s, rbuv_timer);
 
   rb_funcall(rbuv_timer->cb_on_timeout, id_call, 1, timer);
 }

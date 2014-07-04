@@ -123,7 +123,7 @@ VALUE rbuv_check_start(VALUE self) {
   rb_need_block();
   block = rb_block_proc();
 
-  Data_Get_Struct(self, rbuv_check_t, rbuv_check);
+  Data_Get_Handle_Struct(self, rbuv_check_t, rbuv_check);
   rbuv_check->cb_on_check = block;
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p, _uv_check_on_check: %p, check: %s",
@@ -137,7 +137,7 @@ VALUE rbuv_check_start(VALUE self) {
 VALUE rbuv_check_stop(VALUE self) {
   rbuv_check_t *rbuv_check;
 
-  Data_Get_Struct(self, rbuv_check_t, rbuv_check);
+  Data_Get_Handle_Struct(self, rbuv_check_t, rbuv_check);
 
   uv_check_stop(rbuv_check->uv_handle);
 
@@ -158,7 +158,7 @@ void _uv_check_on_check_no_gvl(_uv_check_on_check_no_gvl_arg_t *arg) {
   rbuv_check_t *rbuv_check;
 
   check = (VALUE)uv_check->data;
-  Data_Get_Struct(check, struct rbuv_check_s, rbuv_check);
+  Data_Get_Handle_Struct(check, struct rbuv_check_s, rbuv_check);
   if (status < 0) {
     uv_err_t err = uv_last_error(uv_check->loop);
     error = rb_exc_new2(eRbuvError, uv_strerror(err));

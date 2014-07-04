@@ -38,6 +38,12 @@ extern VALUE mRbuv;
 #define RBUV_CONTAINTER_OF(ptr, type, member) ({ \
   const typeof( ((type *)0)->member ) *__mptr = (ptr); \
   (type *)( (char *)__mptr - RBUV_OFFSETOF(type, member) );})
+#define Data_Get_Handle_Struct(obj, type, sval) do { \
+  Data_Get_Struct(obj, type, sval); \
+  if (sval->uv_handle == NULL) { \
+    rb_raise(eRbuvError, "This %s handle is closed", rb_obj_classname(obj));\
+  } \
+} while(0);
 
 typedef void *(*rbuv_rb_blocking_function_t)(void *);
 

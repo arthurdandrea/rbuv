@@ -7,6 +7,19 @@ shared_examples Rbuv::Handle do
     it "return self" do
       expect(subject.ref).to be subject
     end
+
+    context "when handle is closed" do
+      it "raise error" do
+        loop.run do
+          subject.close do
+            expect {
+              subject.ref
+            }.to raise_error Rbuv::Error, "This #{subject.class} handle is closed"
+
+          end
+        end
+      end
+    end
   end
 
   context "#unref" do

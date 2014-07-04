@@ -152,7 +152,7 @@ VALUE rbuv_poll_start(VALUE self, VALUE events) {
   block = rb_block_proc();
   uv_events = FIX2INT(events);
 
-  Data_Get_Struct(self, rbuv_poll_t, rbuv_poll);
+  Data_Get_Handle_Struct(self, rbuv_poll_t, rbuv_poll);
   rbuv_poll->cb_on_available = block;
 
   uv_poll_start(rbuv_poll->uv_handle, uv_events, _uv_poll_on_available);
@@ -166,7 +166,7 @@ VALUE rbuv_poll_start(VALUE self, VALUE events) {
 VALUE rbuv_poll_stop(VALUE self) {
   rbuv_poll_t *rbuv_poll;
 
-  Data_Get_Struct(self, rbuv_poll_t, rbuv_poll);
+  Data_Get_Handle_Struct(self, rbuv_poll_t, rbuv_poll);
 
   uv_poll_stop(rbuv_poll->uv_handle);
 
@@ -193,7 +193,7 @@ void _uv_poll_on_available_no_gvl(_uv_timer_on_available_no_gvl_arg_t *arg) {
 
   poll = (VALUE)uv_poll->data;
   events = INT2FIX(arg->events);
-  Data_Get_Struct(poll, struct rbuv_poll_s, rbuv_poll);
+  Data_Get_Handle_Struct(poll, struct rbuv_poll_s, rbuv_poll);
   if (status == -1) {
     uv_err = uv_last_error(uv_poll->loop);
     RBUV_DEBUG_LOG_DETAIL("uv_poll: %p, status: %d, error: %s", uv_stream,

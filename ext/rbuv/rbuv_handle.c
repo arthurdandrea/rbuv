@@ -139,20 +139,14 @@ void rbuv_handle_free(rbuv_handle_t *rbuv_handle) {
 
 VALUE rbuv_handle_ref(VALUE self) {
   rbuv_handle_t *rbuv_handle;
-  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
-  if (rbuv_handle->uv_handle == NULL) {
-    rb_raise(eRbuvError, "Handle is closed");
-  }
+  Data_Get_Handle_Struct(self, rbuv_handle_t, rbuv_handle);
   uv_ref(rbuv_handle->uv_handle);
   return self;
 }
 
 VALUE rbuv_handle_unref(VALUE self) {
   rbuv_handle_t *rbuv_handle;
-  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
-  if (rbuv_handle->uv_handle == NULL) {
-    rb_raise(eRbuvError, "Handle is closed");
-  }
+  Data_Get_Handle_Struct(self, rbuv_handle_t, rbuv_handle);
   uv_unref(rbuv_handle->uv_handle);
   return self;
 }
@@ -167,10 +161,7 @@ VALUE rbuv_handle_close(VALUE self) {
     block = Qnil;
   }
 
-  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
-  if (rbuv_handle->uv_handle == NULL) {
-    rb_raise(eRbuvError, "Handle is closed");
-  }
+  Data_Get_Handle_Struct(self, rbuv_handle_t, rbuv_handle);
   _rbuv_handle_close(rbuv_handle, block);
   return self;
 }
@@ -186,22 +177,14 @@ VALUE rbuv_handle_is_closed(VALUE self) {
 VALUE rbuv_handle_is_active(VALUE self) {
   rbuv_handle_t *rbuv_handle;
 
-  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
-
-  if (rbuv_handle->uv_handle == NULL) {
-    rb_raise(eRbuvError, "Handle is closed");
-  }
+  Data_Get_Handle_Struct(self, rbuv_handle_t, rbuv_handle);
   return _rbuv_handle_is_active(rbuv_handle) ? Qtrue : Qfalse;
 }
 
 VALUE rbuv_handle_is_closing(VALUE self) {
   rbuv_handle_t *rbuv_handle;
 
-  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
-
-  if (rbuv_handle->uv_handle == NULL) {
-    rb_raise(eRbuvError, "Handle is closed");
-  }
+  Data_Get_Handle_Struct(self, rbuv_handle_t, rbuv_handle);
   return _rbuv_handle_is_closing(rbuv_handle) ? Qtrue : Qfalse;
 }
 
@@ -251,7 +234,7 @@ void _uv_handle_on_close_no_gvl(_uv_handle_on_close_arg_t *arg) {
   RBUV_DEBUG_LOG_DETAIL("uv_handle: %p, handle: %s",
                         uv_handle, RSTRING_PTR(rb_inspect(handle)));
 
-  Data_Get_Struct(handle, rbuv_handle_t, rbuv_handle);
+  Data_Get_Handle_Struct(handle, rbuv_handle_t, rbuv_handle);
   free(rbuv_handle->uv_handle);
   rbuv_handle->uv_handle = NULL;
 
