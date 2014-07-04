@@ -106,7 +106,7 @@ describe Rbuv::Tcp, :type => :handle do
     end
   end
 
-  context "#accept", loop: :running do
+  context "#accept" do
     before do
       expect(port_in_use?(60000)).to be false
       subject.bind '127.0.0.1', 60000
@@ -114,43 +114,49 @@ describe Rbuv::Tcp, :type => :handle do
 
     context "with a client as a paramenter" do
       it "does not raise an error" do
-        sock = nil
+        loop.run do
+          sock = nil
 
-        subject.listen(10) do |s|
-          client = Rbuv::Tcp.new(loop)
-          expect { subject.accept(client) }.not_to raise_error
-          sock.close
-          tcp.close
+          subject.listen(10) do |s|
+            client = Rbuv::Tcp.new(loop)
+            expect { subject.accept(client) }.not_to raise_error
+            sock.close
+            subject.close
+          end
+
+          sock = TCPSocket.new '127.0.0.1', 60000
         end
-
-        sock = TCPSocket.new '127.0.0.1', 60000
       end
     end
 
     context "with no parameters" do
       it "returns a Rbuv::Tcp" do
-        sock = nil
-        subject.listen(10) do |s|
-          client = s.accept
-          expect(client).to be_a Rbuv::Tcp
-          sock.close
-          subject.close
-        end
+        loop.run do
+          sock = nil
+          subject.listen(10) do |s|
+            client = s.accept
+            expect(client).to be_a Rbuv::Tcp
+            sock.close
+            subject.close
+          end
 
-        sock = TCPSocket.new '127.0.0.1', 60000
+          sock = TCPSocket.new '127.0.0.1', 60000
+        end
       end
 
       it "does not return self" do
-        sock = nil
+        loop.run do
+          sock = nil
 
-        subject.listen(10) do |s|
-          client = s.accept
-          expect(client).not_to be s
-          sock.close
-          subject.close
+          subject.listen(10) do |s|
+            client = s.accept
+            expect(client).not_to be s
+            sock.close
+            subject.close
+          end
+
+          sock = TCPSocket.new '127.0.0.1', 60000
         end
-
-        sock = TCPSocket.new '127.0.0.1', 60000
       end
     end
   end

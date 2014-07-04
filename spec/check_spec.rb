@@ -8,10 +8,14 @@ describe Rbuv::Check do
 
   context "within a Rbuv::Loop#run_once" do
     it "is only called once" do
+      trigger_io
       on_check = double
+
       expect(on_check).to receive(:call).once.with(subject, nil)
       loop.run_once do
         subject.start do |*args|
+          trigger_io.close
+          subject.stop
           on_check.call(*args)
         end
       end

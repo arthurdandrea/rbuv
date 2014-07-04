@@ -103,7 +103,8 @@ VALUE rbuv_loop_s_default(VALUE klass) {
 
 /*
  * Runs the event loop until the reference count drops to zero.
- * @yield If the block is passed, calls it right in the first loop iteration.
+ * @yield If the block is passed, calls it right before the first loop
+ *   iteration.
  * @yieldparam loop [self] the loop itself
  * @return [self] itself
  */
@@ -202,7 +203,9 @@ void rbuv_walk_gc_mark_cb(uv_handle_t *uv_handle, void *arg) {
 void _rbuv_loop_run(VALUE self, uv_run_mode mode) {
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
-
+  if (rb_block_given_p()) {
+    rb_yield(self);
+  }
   rbuv_loop_run_arg_t arg = {
     .mode = mode,
     .loop = rbuv_loop->uv_handle

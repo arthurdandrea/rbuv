@@ -12,6 +12,7 @@ describe Rbuv::Prepare do
       expect(on_prepare).to receive(:call).once.with(subject, nil)
       loop.run_once do
         subject.start do |*args|
+          subject.stop
           on_prepare.call(*args)
         end
       end
