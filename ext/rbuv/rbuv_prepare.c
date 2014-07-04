@@ -2,7 +2,6 @@
 
 struct rbuv_prepare_s {
   uv_prepare_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_prepare;
 };
@@ -30,7 +29,6 @@ VALUE rbuv_prepare_alloc(VALUE klass) {
 
   rbuv_prepare = malloc(sizeof(*rbuv_prepare));
   rbuv_prepare->uv_handle = NULL;
-  rbuv_prepare->loop = Qnil;
   rbuv_prepare->cb_on_prepare = Qnil;
 
   return Data_Wrap_Struct(klass, rbuv_prepare_mark, rbuv_prepare_free,
@@ -42,9 +40,8 @@ void rbuv_prepare_mark(rbuv_prepare_t *rbuv_prepare) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_prepare: %p, uv_handle: %p, self: %lx",
                         rbuv_prepare, rbuv_prepare->uv_handle,
                         (VALUE)rbuv_prepare->uv_handle->data);
-  rb_gc_mark(rbuv_prepare->cb_on_close);
+  rbuv_handle_mark((rbuv_handle_t *)rbuv_prepare);
   rb_gc_mark(rbuv_prepare->cb_on_prepare);
-  rb_gc_mark(rbuv_prepare->loop);
 }
 
 void rbuv_prepare_free(rbuv_prepare_t *rbuv_prepare) {
@@ -75,7 +72,6 @@ static VALUE rbuv_prepare_initialize(int argc, VALUE *argv, VALUE self) {
   rbuv_prepare->uv_handle = malloc(sizeof(*rbuv_prepare->uv_handle));
   uv_prepare_init(rbuv_loop->uv_handle, rbuv_prepare->uv_handle);
   rbuv_prepare->uv_handle->data = (void *)self;
-  rbuv_prepare->loop = loop;
 
   return self;
 }

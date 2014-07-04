@@ -4,7 +4,6 @@ VALUE cRbuvTimer;
 
 struct rbuv_timer_s {
   uv_timer_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_timeout;
 };
@@ -32,14 +31,12 @@ VALUE rbuv_timer_alloc(VALUE klass) {
   rbuv_timer->uv_handle = NULL;
   rbuv_timer->cb_on_close = Qnil;
   rbuv_timer->cb_on_timeout = Qnil;
-  rbuv_timer->loop = Qnil;
   return Data_Wrap_Struct(klass, rbuv_timer_mark, rbuv_timer_free, rbuv_timer);
 }
 
 void rbuv_timer_mark(rbuv_timer_t *rbuv_timer) {
   assert(rbuv_timer);
-  rb_gc_mark(rbuv_timer->loop);
-  rb_gc_mark(rbuv_timer->cb_on_close);
+  rbuv_handle_mark((rbuv_handle_t *)rbuv_timer);
   rb_gc_mark(rbuv_timer->cb_on_timeout);
 }
 
@@ -73,7 +70,6 @@ static VALUE rbuv_timer_initialize(int argc, VALUE *argv, VALUE self) {
   rbuv_timer->uv_handle = malloc(sizeof(*rbuv_timer->uv_handle));
   uv_timer_init(rbuv_loop->uv_handle, rbuv_timer->uv_handle);
   rbuv_timer->uv_handle->data = (void *)self;
-  rbuv_timer->loop = loop;
 
   return self;
 }

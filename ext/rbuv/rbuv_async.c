@@ -2,7 +2,6 @@
 
 struct rbuv_async_s {
   uv_async_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_async;
 };
@@ -30,7 +29,6 @@ static VALUE rbuv_async_alloc(VALUE klass) {
 
   rbuv_async = malloc(sizeof(*rbuv_async));
   rbuv_async->uv_handle = NULL;
-  rbuv_async->loop = Qnil;
   rbuv_async->cb_on_async = Qnil;
   return Data_Wrap_Struct(klass, rbuv_async_mark, rbuv_async_free, rbuv_async);
 }
@@ -40,9 +38,10 @@ static void rbuv_async_mark(rbuv_async_t *rbuv_async) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_async: %p, uv_handle: %p, self: %lx",
                         rbuv_async, rbuv_async->uv_handle,
                         (VALUE)rbuv_async->uv_handle->data);
-  rb_gc_mark(rbuv_async->cb_on_close);
+  if (rbuv_async->uv_handle != NULL) {
+    rb_gc_mark((VALUE) rbuv_async->uv_handle->loop->data);
+  }
   rb_gc_mark(rbuv_async->cb_on_async);
-  rb_gc_mark(rbuv_async->loop);
 }
 
 static void rbuv_async_free(rbuv_async_t *rbuv_async) {
@@ -77,7 +76,6 @@ static VALUE rbuv_async_intialize(int argc, VALUE *argv, VALUE self) {
 
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   Data_Get_Struct(self, rbuv_async_t, rbuv_async);
-  rbuv_async->loop = loop;
   rbuv_async->cb_on_async = rb_block_proc();
   rbuv_async->uv_handle = malloc(sizeof(*rbuv_async->uv_handle));
   rbuv_async->uv_handle->data = (void *)self;

@@ -2,7 +2,6 @@
 
 struct rbuv_stream_s {
   uv_stream_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_connection;
   VALUE cb_on_read;

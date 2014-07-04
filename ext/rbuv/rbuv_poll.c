@@ -4,7 +4,6 @@ VALUE cRbuvPoll;
 
 struct rbuv_poll_s {
   uv_poll_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_available;
 };
@@ -34,14 +33,12 @@ VALUE rbuv_poll_alloc(VALUE klass) {
   rbuv_poll->uv_handle = NULL;
   rbuv_poll->cb_on_close = Qnil;
   rbuv_poll->cb_on_available = Qnil;
-  rbuv_poll->loop = Qnil;
   return Data_Wrap_Struct(klass, rbuv_poll_mark, rbuv_poll_free, rbuv_poll);
 }
 
 void rbuv_poll_mark(rbuv_poll_t *rbuv_poll) {
   assert(rbuv_poll);
-  rb_gc_mark(rbuv_poll->loop);
-  rb_gc_mark(rbuv_poll->cb_on_close);
+  rbuv_handle_mark((rbuv_handle_t *)rbuv_poll);
   rb_gc_mark(rbuv_poll->cb_on_available);
 }
 
@@ -81,7 +78,6 @@ static VALUE rbuv_poll_initialize(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(self, rbuv_poll_t, rbuv_poll);
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
 
-  rbuv_poll->loop = loop;
   rbuv_poll->uv_handle = malloc(sizeof(*rbuv_poll->uv_handle));
   uv_poll_init(rbuv_loop->uv_handle, rbuv_poll->uv_handle, FIX2INT(fd));
   rbuv_poll->uv_handle->data = (void *)self;

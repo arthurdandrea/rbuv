@@ -4,7 +4,6 @@
 #include "rbuv.h"
 struct rbuv_handle_s {
   uv_handle_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
 };
 
@@ -15,6 +14,7 @@ extern VALUE cRbuvHandle;
 void Init_rbuv_handle();
 
 void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle);
+void rbuv_handle_mark(rbuv_handle_t *rbuv_handle);
 void rbuv_handle_free(rbuv_handle_t *rbuv_handle);
 
 #endif  /* RBUV_HANDLE_H_ */

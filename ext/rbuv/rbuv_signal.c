@@ -2,7 +2,6 @@
 
 struct rbuv_signal_s {
   uv_signal_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_signal;
 };
@@ -30,7 +29,6 @@ VALUE rbuv_signal_alloc(VALUE klass) {
 
   rbuv_signal = malloc(sizeof(*rbuv_signal));
   rbuv_signal->uv_handle = NULL;
-  rbuv_signal->loop = Qnil;
   rbuv_signal->cb_on_signal = Qnil;
 
   return Data_Wrap_Struct(klass, rbuv_signal_mark, rbuv_signal_free, rbuv_signal);
@@ -41,9 +39,8 @@ void rbuv_signal_mark(rbuv_signal_t *rbuv_signal) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_signal: %p, uv_handle: %p, self: %lx",
                         rbuv_signal, rbuv_signal->uv_handle,
                         (VALUE)rbuv_signal->uv_handle->data);
-  rb_gc_mark(rbuv_signal->cb_on_close);
+  rbuv_handle_mark((rbuv_handle_t *)rbuv_signal);
   rb_gc_mark(rbuv_signal->cb_on_signal);
-  rb_gc_mark(rbuv_signal->loop);
 }
 
 void rbuv_signal_free(rbuv_signal_t *rbuv_signal) {
@@ -73,7 +70,6 @@ static VALUE rbuv_signal_initialize(int argc, VALUE *argv, VALUE self) {
   rbuv_signal->uv_handle = malloc(sizeof(*rbuv_signal->uv_handle));
   uv_signal_init(rbuv_loop->uv_handle, rbuv_signal->uv_handle);
   rbuv_signal->uv_handle->data = (void *)self;
-  rbuv_signal->loop = loop;
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_signal: %p, uv_handle: %p, signal: %s",
                         rbuv_signal, rbuv_signal->uv_handle,

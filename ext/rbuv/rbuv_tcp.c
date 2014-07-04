@@ -2,7 +2,6 @@
 
 struct rbuv_tcp_s {
   uv_tcp_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_connection;
   VALUE cb_on_read;
@@ -39,7 +38,6 @@ VALUE rbuv_tcp_alloc(VALUE klass) {
   rbuv_tcp->cb_on_connection = Qnil;
   rbuv_tcp->cb_on_read = Qnil;
   rbuv_tcp->cb_on_connect = Qnil;
-  rbuv_tcp->loop = Qnil;
 
   return Data_Wrap_Struct(klass, rbuv_tcp_mark, rbuv_tcp_free, rbuv_tcp);
 }
@@ -49,12 +47,11 @@ void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p, self: %lx",
                         rbuv_tcp, rbuv_tcp->uv_handle,
                         (VALUE)rbuv_tcp->uv_handle->data);
+  rbuv_handle_mark((rbuv_handle_t *)rbuv_tcp);
   rb_gc_mark(rbuv_tcp->cbs_on_write);
-  rb_gc_mark(rbuv_tcp->cb_on_close);
   rb_gc_mark(rbuv_tcp->cb_on_connection);
   rb_gc_mark(rbuv_tcp->cb_on_read);
   rb_gc_mark(rbuv_tcp->cb_on_connect);
-  rb_gc_mark(rbuv_tcp->loop);
 }
 
 void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp) {
@@ -82,7 +79,6 @@ static VALUE rbuv_tcp_initialize(int argc, VALUE *argv, VALUE self) {
 
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  rbuv_tcp->loop = loop;
   rbuv_tcp->uv_handle = malloc(sizeof(*rbuv_tcp->uv_handle));
   uv_tcp_init(rbuv_loop->uv_handle, rbuv_tcp->uv_handle);
   rbuv_tcp->uv_handle->data = (void *)self;
@@ -223,9 +219,11 @@ static VALUE rbuv_tcp_accept(int argc, VALUE *argv, VALUE self) {
   if (client == Qnil) {
     rbuv_tcp_t *rbuv_tcp;
     VALUE client;
+    VALUE loop;
 
     Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-    client = rb_class_new_instance(1, &rbuv_tcp->loop, rb_class_of(self));
+    loop = (VALUE)rbuv_tcp->uv_handle->loop->data;
+    client = rb_class_new_instance(1, &loop, rb_class_of(self));
     rb_call_super(1, &client);
     return client;
   } else {

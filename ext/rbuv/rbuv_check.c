@@ -2,7 +2,6 @@
 
 struct rbuv_check_s {
   uv_check_t *uv_handle;
-  VALUE loop;
   VALUE cb_on_close;
   VALUE cb_on_check;
 };
@@ -30,7 +29,6 @@ VALUE rbuv_check_alloc(VALUE klass) {
 
   rbuv_check = malloc(sizeof(*rbuv_check));
   rbuv_check->uv_handle = NULL;
-  rbuv_check->loop = Qnil;
   rbuv_check->cb_on_check = Qnil;
   return Data_Wrap_Struct(klass, rbuv_check_mark, rbuv_check_free, rbuv_check);
 }
@@ -40,9 +38,8 @@ void rbuv_check_mark(rbuv_check_t *rbuv_check) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p, self: %lx",
                         rbuv_check, rbuv_check->uv_handle,
                         (VALUE)rbuv_check->uv_handle->data);
-  rb_gc_mark(rbuv_check->cb_on_close);
+  rbuv_handle_mark((rbuv_handle_t *)rbuv_check);
   rb_gc_mark(rbuv_check->cb_on_check);
-  rb_gc_mark(rbuv_check->loop);
 }
 
 void rbuv_check_free(rbuv_check_t *rbuv_check) {
@@ -71,7 +68,6 @@ VALUE rbuv_check_initialize(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   Data_Get_Struct(self, rbuv_check_t, rbuv_check);
 
-  rbuv_check->loop = loop;
   rbuv_check->uv_handle = malloc(sizeof(*rbuv_check->uv_handle));
   uv_check_init(rbuv_loop->uv_handle, rbuv_check->uv_handle);
   rbuv_check->uv_handle->data = (void *)self;
