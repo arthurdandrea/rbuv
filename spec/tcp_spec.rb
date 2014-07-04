@@ -37,10 +37,14 @@ describe Rbuv::Tcp, :type => :handle do
   end
 
   it "#bind" do
+    if RUBY_PLATFORM.downcase.include?("linux")
+      pending "this spec does't pass on linux machines, see #1 on github"
+    end
+
     expect(port_in_use?(60000)).to be false
 
     loop.run do
-      skip "this spec does't pass on linux machines, see #1 on github"
+
       begin
         subject.bind '127.0.0.1', 60000
 
