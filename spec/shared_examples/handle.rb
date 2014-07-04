@@ -1,6 +1,29 @@
 shared_examples Rbuv::Handle do
   it { is_expected.to be_a_kind_of Rbuv::Handle }
 
+  context "#loop" do
+    it { is_expected.to respond_to(:loop) }
+
+    context "when the handle is closed" do
+      around do |example|
+        subject.close do
+          example.run
+        end
+        loop.run
+      end
+
+      it "return nil" do
+        expect(subject.loop).to be nil
+      end
+    end
+
+    context "when the handle is not closed" do
+      it "return the loop" do
+        expect(subject.loop).to be loop
+      end
+    end
+  end
+
   context "#ref" do
     it { is_expected.to respond_to(:ref) }
 
@@ -8,18 +31,7 @@ shared_examples Rbuv::Handle do
       expect(subject.ref).to be subject
     end
 
-    context "when handle is closed" do
-      it "raise error" do
-        loop.run do
-          subject.close do
-            expect {
-              subject.ref
-            }.to raise_error Rbuv::Error, "This #{subject.class} handle is closed"
-
-          end
-        end
-      end
-    end
+    it_raise_error_when_closed
   end
 
   context "#unref" do
@@ -28,10 +40,14 @@ shared_examples Rbuv::Handle do
     it "return self" do
       expect(subject.unref).to be subject
     end
+
+    it_raise_error_when_closed
   end
 
   context "#active?" do
     it { is_expected.to respond_to(:active?) }
+
+    it_raise_error_when_closed
   end
 
   context "#close" do

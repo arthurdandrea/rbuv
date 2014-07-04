@@ -29,5 +29,15 @@ module Rbuv
       raise RuntimeError unless self.handles.empty?
       self
     end
+
+    # Runs the loop using {#run} then ensure that {#dispose} is called
+    # @yield (see #run)
+    # @yieldparam loop (see #run)
+    # @return (see #run)
+    def run_and_dispose(&block)
+      run(&block)
+    ensure
+      dispose
+    end
   end
 end

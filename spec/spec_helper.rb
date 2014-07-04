@@ -9,6 +9,35 @@ require 'rbuv'
 # loaded once.
 #
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
+module Helpers
+  def it_raise_error_when_closed
+    method = /^#([a-zA-Z][a-zA-Z0-9]*[\?\!]?)$/.match(description)[1]
+    context "when handle is closed" do
+      around do |example|
+        subject.close do
+          example.run
+        end
+        loop.run
+      end
+
+      it "raise Rbuv::Error" do
+        expect {
+          subject.__send__(method)
+        }.to raise_error Rbuv::Error, "This #{subject.class} handle is closed"
+      end
+    end
+  end
+
+  def it_requires_a_block(*args)
+    method = /^#([a-zA-Z][a-zA-Z0-9]*[\?\!]?)$/.match(description)[1]
+
+    it "requires a block" do
+      expect {
+        subject.__send__(method, *args)
+      }.to raise_error LocalJumpError, 'no block given'
+    end
+  end
+end
 RSpec.configure do |config|
   config.run_all_when_everything_filtered = true
   config.filter_run :focus
@@ -18,4 +47,5 @@ RSpec.configure do |config|
   # the seed, which is printed after each run.
   #     --seed 1234
   config.order = 'random'
+  config.extend Helpers
 end

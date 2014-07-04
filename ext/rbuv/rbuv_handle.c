@@ -3,6 +3,10 @@
 /*
  * Document-class: Rbuv::Handle
  * @abstract
+ *
+ * @!attribute [r] loop
+ *   @return [Rbuv::Loop, nil] the loop where this handle runs or +nil+ if this
+ *     handle is #{closed?}.
  */
 
 struct rbuv_handle_on_close_arg_s {
@@ -66,6 +70,15 @@ void rbuv_handle_free(rbuv_handle_t *rbuv_handle) {
     free(rbuv_handle->uv_handle);
   }
   free(rbuv_handle);
+}
+
+static VALUE rbuv_handle_get_loop(VALUE self) {
+  rbuv_handle_t *rbuv_handle;
+  Data_Get_Struct(self, rbuv_handle_t, rbuv_handle);
+  if (rbuv_handle->uv_handle == NULL) {
+    return Qnil;
+  }
+  return (VALUE)rbuv_handle->uv_handle->loop->data;
 }
 
 /*
@@ -204,6 +217,8 @@ void rbuv_handle_on_close_no_gvl(rbuv_handle_on_close_arg_t *arg) {
 void Init_rbuv_handle() {
   cRbuvHandle = rb_define_class_under(mRbuv, "Handle", rb_cObject);
   rb_undef_alloc_func(cRbuvHandle);
+
+  rb_define_method(cRbuvHandle, "loop", rbuv_handle_get_loop, 0);
 
   rb_define_method(cRbuvHandle, "ref", rbuv_handle_ref, 0);
   rb_define_method(cRbuvHandle, "unref", rbuv_handle_unref, 0);

@@ -2,11 +2,7 @@ shared_examples Rbuv::Stream do
   it { is_expected.to be_a_kind_of Rbuv::Stream }
 
   describe "#write" do
-    it "requires a block" do
-      expect {
-        subject.write "string"
-      }.to raise_error LocalJumpError, 'no block given'
-    end
+    it_requires_a_block "data"
 
     it "calls the block" do
       on_write = double
