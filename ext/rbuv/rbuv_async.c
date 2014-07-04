@@ -93,7 +93,6 @@ VALUE rbuv_async_alloc(VALUE klass, VALUE loop, VALUE block) {
 
   async = Data_Wrap_Struct(klass, rbuv_async_mark, rbuv_async_free, rbuv_async);
   rbuv_async->uv_handle->data = (void *)async;
-  rbuv_loop_register_handle(rbuv_loop, rbuv_async, async);
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_async: %p, uv_handle: %p, async: %s",
                         rbuv_async, rbuv_async->uv_handle,

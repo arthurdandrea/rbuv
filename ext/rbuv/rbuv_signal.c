@@ -90,7 +90,6 @@ VALUE rbuv_signal_alloc(VALUE klass, VALUE loop) {
 
   signal = Data_Wrap_Struct(klass, rbuv_signal_mark, rbuv_signal_free, rbuv_signal);
   rbuv_signal->uv_handle->data = (void *)signal;
-  rbuv_loop_register_handle(rbuv_loop, rbuv_signal, signal);
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_signal: %p, uv_handle: %p, signal: %s",
                         rbuv_signal, rbuv_signal->uv_handle,

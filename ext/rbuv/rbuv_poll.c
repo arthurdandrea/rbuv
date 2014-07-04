@@ -124,7 +124,6 @@ VALUE rbuv_poll_alloc(VALUE klass, VALUE loop, VALUE fd) {
 
   timer = Data_Wrap_Struct(klass, rbuv_poll_mark, rbuv_poll_free, rbuv_poll);
   rbuv_poll->uv_handle->data = (void *)timer;
-  rbuv_loop_register_handle(rbuv_loop, rbuv_poll, timer);
 
   return timer;
 }

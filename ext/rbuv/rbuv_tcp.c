@@ -202,7 +202,7 @@ VALUE rbuv_tcp_alloc(VALUE klass, VALUE loop) {
 
   tcp = Data_Wrap_Struct(klass, rbuv_tcp_mark, rbuv_tcp_free, rbuv_tcp);
   rbuv_tcp->uv_handle->data = (void *)tcp;
-  rbuv_loop_register_handle(rbuv_loop, rbuv_tcp, tcp);
+
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p, tcp: %s",
                         rbuv_tcp, rbuv_tcp->uv_handle,
                         RSTRING_PTR(rb_inspect(tcp)));

@@ -92,7 +92,6 @@ VALUE rbuv_prepare_alloc(VALUE klass, VALUE loop) {
 
   prepare = Data_Wrap_Struct(klass, rbuv_prepare_mark, rbuv_prepare_free, rbuv_prepare);
   rbuv_prepare->uv_handle->data = (void *)prepare;
-  rbuv_loop_register_handle(rbuv_loop, rbuv_prepare, prepare);
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_prepare: %p, uv_handle: %p, prepare: %s",
                         rbuv_prepare, rbuv_prepare->uv_handle,

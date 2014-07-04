@@ -102,7 +102,6 @@ VALUE rbuv_timer_alloc(VALUE klass, VALUE loop) {
 
   timer = Data_Wrap_Struct(klass, rbuv_timer_mark, rbuv_timer_free, rbuv_timer);
   rbuv_timer->uv_handle->data = (void *)timer;
-  rbuv_loop_register_handle(rbuv_loop, rbuv_timer, timer);
 
   return timer;
 }

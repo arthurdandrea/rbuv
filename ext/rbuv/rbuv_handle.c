@@ -109,19 +109,6 @@ void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle) {
 void rbuv_handle_free(rbuv_handle_t *rbuv_handle) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_handle: %p, uv_handle: %p", rbuv_handle, rbuv_handle->uv_handle);
   if ((TYPE(rbuv_handle->loop) != T_NONE) && (rbuv_handle->loop != Qnil)) {
-
-#ifdef RBUV_RBX
-    rbuv_loop_t *rbuv_loop;
-    rbuv_loop = (rbuv_loop_t*)DATA_PTR(rbuv_handle->loop);
-    rbuv_loop_unregister_handle(rbuv_loop, rbuv_handle);
-#else
-    // dont call if the loop is about to be GC'd
-    if (TYPE(rbuv_handle->loop) != T_ZOMBIE) {
-      rbuv_loop_t *rbuv_loop;
-      rbuv_loop = (rbuv_loop_t*)DATA_PTR(rbuv_handle->loop);
-      rbuv_loop_unregister_handle(rbuv_loop, rbuv_handle);
-    }
-#endif
     if (rbuv_handle->uv_handle != NULL) {
       if (_rbuv_handle_is_closing(rbuv_handle)) {
         rb_warn("The GC freed the Rbuv::Handle before #close completed.Consider using Rbuv::Loop#dispose\n");
@@ -240,7 +227,6 @@ void _uv_handle_on_close_no_gvl(_uv_handle_on_close_arg_t *arg) {
 
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(rbuv_handle->loop, rbuv_loop_t, rbuv_loop);
-  rbuv_loop_unregister_handle(rbuv_loop, rbuv_handle);
   rbuv_handle->loop = Qnil;
 
   on_close = rbuv_handle->cb_on_close;

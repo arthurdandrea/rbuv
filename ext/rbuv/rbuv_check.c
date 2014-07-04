@@ -92,7 +92,6 @@ VALUE rbuv_check_alloc(VALUE klass, VALUE loop) {
 
   check = Data_Wrap_Struct(klass, rbuv_check_mark, rbuv_check_free, rbuv_check);
   rbuv_check->uv_handle->data = (void *)check;
-  rbuv_loop_register_handle(rbuv_loop, rbuv_check, check);
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p, check: %s",
                         rbuv_check, rbuv_check->uv_handle,
