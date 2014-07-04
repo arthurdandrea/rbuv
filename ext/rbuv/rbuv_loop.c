@@ -8,6 +8,10 @@
  *   when they are closed.
  *   @return [Array<Rbuv::Handle>] every handle associated with this loop.
  *
+ * @!attribute [r] ref_count
+ *   The libuv internal count of active and referenced handles.
+ *   @return the count of active and referenced handles.
+ *
  * @!attribute [r] default
  *   @!scope class
  *   @return [Rbuv::Loop] the default loop
@@ -161,7 +165,7 @@ static VALUE rbuv_loop_get_handles(VALUE self) {
   return array;
 }
 
-static VALUE rbuv_loop_uv_active_handles(VALUE self) {
+static VALUE rbuv_loop_get_ref_count(VALUE self) {
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
   return UINT2NUM(rbuv_loop->uv_handle->active_handles);
@@ -225,7 +229,7 @@ void Init_rbuv_loop() {
   rb_define_method(cRbuvLoop, "run_once", rbuv_loop_run_once, 0);
   rb_define_method(cRbuvLoop, "run_nowait", rbuv_loop_run_nowait, 0);
   rb_define_method(cRbuvLoop, "handles", rbuv_loop_get_handles, 0);
-  rb_define_method(cRbuvLoop, "uv_active_handles", rbuv_loop_uv_active_handles, 0);
+  rb_define_method(cRbuvLoop, "ref_count", rbuv_loop_get_ref_count, 0);
   rb_define_method(cRbuvLoop, "inspect", rbuv_loop_inspect, 0);
   rb_define_singleton_method(cRbuvLoop, "default", rbuv_loop_s_default, 0);
 }
