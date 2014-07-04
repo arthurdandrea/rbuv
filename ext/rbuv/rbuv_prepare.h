@@ -3,8 +3,6 @@
 
 #include "rbuv.h"
 
-typedef struct rbuv_prepare_s rbuv_prepare_t;
-
 extern VALUE cRbuvPrepare;
 
 void Init_rbuv_prepare();

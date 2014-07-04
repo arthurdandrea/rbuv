@@ -3,8 +3,6 @@
 
 #include "rbuv.h"
 
-typedef struct rbuv_check_s rbuv_check_t;
-
 extern VALUE cRbuvCheck;
 
 void Init_rbuv_check();

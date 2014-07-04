@@ -3,8 +3,6 @@
 
 #include "rbuv.h"
 
-typedef struct rbuv_timer_s rbuv_timer_t;
-
 extern VALUE cRbuvTimer;
 
 void Init_rbuv_timer();

@@ -3,8 +3,6 @@
 
 #include "rbuv.h"
 
-typedef struct rbuv_async_s rbuv_async_t;
-
 extern VALUE cRbuvAsync;
 
 void Init_rbuv_async();

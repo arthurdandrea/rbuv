@@ -14,9 +14,6 @@ extern VALUE cRbuvHandle;
 
 void Init_rbuv_handle();
 
-int _rbuv_handle_is_active(rbuv_handle_t *rbuv_handle);
-int _rbuv_handle_is_closing(rbuv_handle_t *rbuv_handle);
-void _rbuv_handle_close(rbuv_handle_t *rbuv_handle, VALUE block);
 void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle);
 void rbuv_handle_free(rbuv_handle_t *rbuv_handle);
 

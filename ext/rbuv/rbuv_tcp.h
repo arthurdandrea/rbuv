@@ -3,8 +3,6 @@
 
 #include "rbuv.h"
 
-typedef struct rbuv_tcp_s rbuv_tcp_t;
-
 extern VALUE cRbuvTcp;
 
 void Init_rbuv_tcp();

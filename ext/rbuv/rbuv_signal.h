@@ -3,8 +3,6 @@
 
 #include "rbuv.h"
 
-typedef struct rbuv_signal_s rbuv_signal_t;
-
 extern VALUE cRbuvSignal;
 
 void Init_rbuv_signal();

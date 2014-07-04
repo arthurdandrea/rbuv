@@ -6,98 +6,33 @@ struct rbuv_check_s {
   VALUE cb_on_close;
   VALUE cb_on_check;
 };
+typedef struct rbuv_check_s rbuv_check_t;
 
-typedef struct _uv_check_on_check_no_gvl_arg_s {
+struct rbuv_check_on_check_arg_s {
   uv_check_t *uv_check;
   int status;
-} _uv_check_on_check_no_gvl_arg_t;
+};
+typedef struct rbuv_check_on_check_arg_s rbuv_check_on_check_arg_t;
 
 VALUE cRbuvCheck;
 
-/* Allocator/deallocator */
-/*
- * @api private
- */
-static VALUE rbuv_check_s_new(int argc, VALUE *argv, VALUE klass);
+/* Allocator / Mark / Deallocator */
+static VALUE rbuv_check_alloc(VALUE klass);
 static void rbuv_check_mark(rbuv_check_t *rbuv_check);
 static void rbuv_check_free(rbuv_check_t *rbuv_check);
-/* Private Allocatator */
-static VALUE rbuv_check_alloc(VALUE klass, VALUE loop);
-
-/* Methods */
-
-/*
- * Start this check handle.
- *
- * @yield Calls the block exactly once per loop iteration, just after the system
- *   returns from blocking.
- * @yieldparam check [self] itself
- * @yieldparam error [Rbuv::Error, nil] An exception or +nil+ if it was
- *   succesful
- * @return [self] itself
- */
-static VALUE rbuv_check_start(VALUE self);
-
-/*
- * Stop this check handle.
- *
- * @return [self] itself
- */
-static VALUE rbuv_check_stop(VALUE self);
 
 /* Private methods */
-static void _uv_check_on_check(uv_check_t *uv_check, int status);
-static void _uv_check_on_check_no_gvl(_uv_check_on_check_no_gvl_arg_t *arg);
+static void rbuv_check_on_check(uv_check_t *uv_check, int status);
+static void rbuv_check_on_check_no_gvl(rbuv_check_on_check_arg_t *arg);
 
-void Init_rbuv_check() {
-  cRbuvCheck = rb_define_class_under(mRbuv, "Check", cRbuvHandle);
-  rb_undef_alloc_func(cRbuvCheck);
-  rb_define_singleton_method(cRbuvCheck, "new", rbuv_check_s_new, -1);
-
-  rb_define_method(cRbuvCheck, "start", rbuv_check_start, 0);
-  rb_define_method(cRbuvCheck, "stop", rbuv_check_stop, 0);
-}
-/*
- * Document-class: Rbuv::Check < Rbuv::Handle
- * Every active check handle gets its callback called exactly once per loop
- * iteration, just after the system returns from blocking.
- *
- * @!method initialize(loop=nil)
- *   Creates a new check handle.
- *
- *   @param loop [Rbuv::Loop, nil] loop object where this handle runs, if it is
- *     +nil+ then it the runs the handle in the {Rbuv::Loop.default}
- *   @return [Rbuv::Check]
- */
-VALUE rbuv_check_s_new(int argc, VALUE *argv, VALUE klass) {
-  VALUE loop;
-  rb_scan_args(argc, argv, "01", &loop);
-  if (loop == Qnil) {
-    loop = rbuv_loop_s_default(cRbuvLoop);
-  }
-  return rbuv_check_alloc(klass, loop);
-}
-
-VALUE rbuv_check_alloc(VALUE klass, VALUE loop) {
+VALUE rbuv_check_alloc(VALUE klass) {
   rbuv_check_t *rbuv_check;
-  rbuv_loop_t *rbuv_loop;
-  VALUE check;
 
-  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   rbuv_check = malloc(sizeof(*rbuv_check));
-  rbuv_check->uv_handle = malloc(sizeof(*rbuv_check->uv_handle));
-  uv_check_init(rbuv_loop->uv_handle, rbuv_check->uv_handle);
-  rbuv_check->loop = loop;
+  rbuv_check->uv_handle = NULL;
+  rbuv_check->loop = Qnil;
   rbuv_check->cb_on_check = Qnil;
-
-  check = Data_Wrap_Struct(klass, rbuv_check_mark, rbuv_check_free, rbuv_check);
-  rbuv_check->uv_handle->data = (void *)check;
-
-  RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p, check: %s",
-                        rbuv_check, rbuv_check->uv_handle,
-                        RSTRING_PTR(rb_inspect(check)));
-
-  return check;
+  return Data_Wrap_Struct(klass, rbuv_check_mark, rbuv_check_free, rbuv_check);
 }
 
 void rbuv_check_mark(rbuv_check_t *rbuv_check) {
@@ -115,7 +50,45 @@ void rbuv_check_free(rbuv_check_t *rbuv_check) {
   rbuv_handle_free((rbuv_handle_t *)rbuv_check);
 }
 
-VALUE rbuv_check_start(VALUE self) {
+/*
+ * @overload initialize(loop=nil)
+ *   Creates a new check handle.
+ *
+ *   @param loop [Rbuv::Loop, nil] loop object where this handle runs, if it is
+ *     +nil+ then it the runs the handle in the {Rbuv::Loop.default}
+ *   @return [Rbuv::Check]
+ */
+VALUE rbuv_check_initialize(int argc, VALUE *argv, VALUE self) {
+  VALUE loop;
+  rbuv_check_t *rbuv_check;
+  rbuv_loop_t *rbuv_loop;
+
+  rb_scan_args(argc, argv, "01", &loop);
+  if (loop == Qnil) {
+    loop = rbuv_loop_s_default(cRbuvLoop);
+  }
+
+  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
+  Data_Get_Struct(self, rbuv_check_t, rbuv_check);
+
+  rbuv_check->loop = loop;
+  rbuv_check->uv_handle = malloc(sizeof(*rbuv_check->uv_handle));
+  uv_check_init(rbuv_loop->uv_handle, rbuv_check->uv_handle);
+  rbuv_check->uv_handle->data = (void *)self;
+  return self;
+}
+
+/*
+ * Start this check handle.
+ *
+ * @yield Calls the block exactly once per loop iteration, just after the system
+ *   returns from blocking.
+ * @yieldparam check [self] itself
+ * @yieldparam error [Rbuv::Error, nil] An exception or +nil+ if it was
+ *   succesful
+ * @return [self] itself
+ */
+static VALUE rbuv_check_start(VALUE self) {
   VALUE block;
   rbuv_check_t *rbuv_check;
 
@@ -125,30 +98,32 @@ VALUE rbuv_check_start(VALUE self) {
   Data_Get_Handle_Struct(self, rbuv_check_t, rbuv_check);
   rbuv_check->cb_on_check = block;
 
-  RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p, _uv_check_on_check: %p, check: %s",
-                        rbuv_check, rbuv_check->uv_handle, _uv_check_on_check,
+  RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p, rbuv_check_on_check: %p, check: %s",
+                        rbuv_check, rbuv_check->uv_handle, rbuv_check_on_check,
                         RSTRING_PTR(rb_inspect(self)));
-  uv_check_start(rbuv_check->uv_handle, _uv_check_on_check);
-
+  uv_check_start(rbuv_check->uv_handle, rbuv_check_on_check);
   return self;
 }
 
-VALUE rbuv_check_stop(VALUE self) {
+/*
+ * Stop this check handle.
+ *
+ * @return [self] itself
+ */
+static VALUE rbuv_check_stop(VALUE self) {
   rbuv_check_t *rbuv_check;
 
   Data_Get_Handle_Struct(self, rbuv_check_t, rbuv_check);
-
   uv_check_stop(rbuv_check->uv_handle);
-
   return self;
 }
 
-void _uv_check_on_check(uv_check_t *uv_check, int status) {
-  _uv_check_on_check_no_gvl_arg_t reg = { .uv_check = uv_check, .status = status };
-  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)_uv_check_on_check_no_gvl, &reg);
+void rbuv_check_on_check(uv_check_t *uv_check, int status) {
+  rbuv_check_on_check_arg_t reg = { .uv_check = uv_check, .status = status };
+  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_check_on_check_no_gvl, &reg);
 }
 
-void _uv_check_on_check_no_gvl(_uv_check_on_check_no_gvl_arg_t *arg) {
+void rbuv_check_on_check_no_gvl(rbuv_check_on_check_arg_t *arg) {
   uv_check_t *uv_check = arg->uv_check;
   int status = arg->status;
 
@@ -166,3 +141,25 @@ void _uv_check_on_check_no_gvl(_uv_check_on_check_no_gvl_arg_t *arg) {
   }
   rb_funcall(rbuv_check->cb_on_check, id_call, 2, check, error);
 }
+
+void Init_rbuv_check() {
+  cRbuvCheck = rb_define_class_under(mRbuv, "Check", cRbuvHandle);
+  rb_define_alloc_func(cRbuvCheck, rbuv_check_alloc);
+
+  rb_define_method(cRbuvCheck, "initialize", rbuv_check_initialize, -1);
+  rb_define_method(cRbuvCheck, "start", rbuv_check_start, 0);
+  rb_define_method(cRbuvCheck, "stop", rbuv_check_stop, 0);
+}
+
+/* This have to be declared after Init_* so it can replace YARD bad assumption
+ * for parent class beeing RbuvHandle not Rbuv::Handle.
+ * Also it need some text after document-class statement otherwise YARD won't
+ * parse it
+ */
+
+/*
+ * Document-class: Rbuv::Check < Rbuv::Handle
+ *
+ * Every active check handle gets its callback called exactly once per loop
+ * iteration, just after the system returns from blocking.
+ */

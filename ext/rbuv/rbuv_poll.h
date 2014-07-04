@@ -3,8 +3,6 @@
 
 #include "rbuv.h"
 
-typedef struct rbuv_poll_s rbuv_poll_t;
-
 extern VALUE cRbuvPoll;
 
 void Init_rbuv_poll();

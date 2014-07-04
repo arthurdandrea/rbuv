@@ -8,102 +8,32 @@ struct rbuv_timer_s {
   VALUE cb_on_close;
   VALUE cb_on_timeout;
 };
+typedef struct rbuv_timer_s rbuv_timer_t;
 
-typedef struct {
+struct rbuv_timer_on_timeout_arg_s {
   uv_timer_t *uv_timer;
   int status;
-} _uv_timer_on_timeout_no_gvl_arg_t;
+};
+typedef struct rbuv_timer_on_timeout_arg_s rbuv_timer_on_timeout_arg_t;
 
-/* Allocator/deallocator */
-/* @api private
- */
-static VALUE rbuv_timer_s_new(int argc, VALUE *argv, VALUE klass);
+
+static VALUE rbuv_timer_alloc(VALUE klass);
 static void rbuv_timer_mark(rbuv_timer_t *rbuv_timer);
 static void rbuv_timer_free(rbuv_timer_t *rbuv_timer);
-/* Private Allocatator */
-static VALUE rbuv_timer_alloc(VALUE klass, VALUE loop);
-
-/* Methods */
-
-/**
- * @overload start(timeout, repeat)
- *   Start the timer.
- *   @param timeout [Number] the timeout in millisecond.
- *   @param repeat [Number] the repeat interval in millisecond.
- *   @yieldparam timer [self] itself
- *   @return [self] itself
- */
-static VALUE rbuv_timer_start(VALUE self, VALUE timeout, VALUE repeat);
-
-/**
- * Stop the timer.
- *
- * @return [self] itself
- */
-static VALUE rbuv_timer_stop(VALUE self);
-static VALUE rbuv_timer_repeat_get(VALUE self);
-static VALUE rbuv_timer_repeat_set(VALUE self, VALUE repeat);
 
 /* Private methods */
-static void _uv_timer_on_timeout(uv_timer_t *uv_timer, int status);
-static void _uv_timer_on_timeout_no_gvl(_uv_timer_on_timeout_no_gvl_arg_t *arg);
+static void rbuv_timer_on_timeout(uv_timer_t *uv_timer, int status);
+static void rbuv_timer_on_timeout_no_gvl(rbuv_timer_on_timeout_arg_t *arg);
 
-void Init_rbuv_timer() {
-  cRbuvTimer = rb_define_class_under(mRbuv, "Timer", cRbuvHandle);
-  rb_undef_alloc_func(cRbuvTimer);
-  rb_define_singleton_method(cRbuvTimer, "new", rbuv_timer_s_new, -1);
-
-  rb_define_method(cRbuvTimer, "start", rbuv_timer_start, 2);
-  rb_define_method(cRbuvTimer, "stop", rbuv_timer_stop, 0);
-  rb_define_method(cRbuvTimer, "repeat", rbuv_timer_repeat_get, 0);
-  rb_define_method(cRbuvTimer, "repeat=", rbuv_timer_repeat_set, 1);
-}
-
-/*
- * Document-class: Rbuv::Timer < Rbuv::Handle
- * A Timer handle will run the supplied callback after the specified amount of
- * seconds.
- *
- * @!attribute [rw] repeat
- *   @note If the +repeat+ value is set from a timer callback it does not
- *     immediately take effect. If the timer was non-repeating before, it will
- *     have been stopped. If it was repeating, then the old repeat value will
- *     have been used to schedule the next timeout.
- *   @return [Number] the repeat interval in millisecond.
- *
- * @!method initialize(loop=nil)
- *   Create a new handle that fires on specified timeouts.
- *
- *   @param loop [Rbuv::Loop, nil] loop object where this handle runs, if it is
- *     +nil+ then it the runs the handle in the {Rbuv::Loop.default}
- *   @return [Rbuv::Timer]
- */
-VALUE rbuv_timer_s_new(int argc, VALUE *argv, VALUE klass) {
-  VALUE loop;
-  rb_scan_args(argc, argv, "01", &loop);
-  if (loop == Qnil) {
-    loop = rbuv_loop_s_default(cRbuvLoop);
-  }
-  return rbuv_timer_alloc(klass, loop);
-}
-
-VALUE rbuv_timer_alloc(VALUE klass, VALUE loop) {
+VALUE rbuv_timer_alloc(VALUE klass) {
   rbuv_timer_t *rbuv_timer;
-  rbuv_loop_t *rbuv_loop;
-  VALUE timer;
 
-  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   rbuv_timer = malloc(sizeof(*rbuv_timer));
-  rbuv_timer->uv_handle = malloc(sizeof(*rbuv_timer->uv_handle));
-  uv_timer_init(rbuv_loop->uv_handle, rbuv_timer->uv_handle);
+  rbuv_timer->uv_handle = NULL;
   rbuv_timer->cb_on_close = Qnil;
   rbuv_timer->cb_on_timeout = Qnil;
-  rbuv_timer->loop = loop;
-
-  timer = Data_Wrap_Struct(klass, rbuv_timer_mark, rbuv_timer_free, rbuv_timer);
-  rbuv_timer->uv_handle->data = (void *)timer;
-
-  return timer;
+  rbuv_timer->loop = Qnil;
+  return Data_Wrap_Struct(klass, rbuv_timer_mark, rbuv_timer_free, rbuv_timer);
 }
 
 void rbuv_timer_mark(rbuv_timer_t *rbuv_timer) {
@@ -120,6 +50,42 @@ void rbuv_timer_free(rbuv_timer_t *rbuv_timer) {
   rbuv_handle_free((rbuv_handle_t *)rbuv_timer);
 }
 
+/*
+ * @overload initialize(loop=nil)
+ *   Create a new handle that fires on specified timeouts.
+ *
+ *   @param loop [Rbuv::Loop, nil] loop object where this handle runs, if it is
+ *     +nil+ then it the runs the handle in the {Rbuv::Loop.default}
+ *   @return [Rbuv::Timer]
+ */
+static VALUE rbuv_timer_initialize(int argc, VALUE *argv, VALUE self) {
+  VALUE loop;
+  rbuv_timer_t *rbuv_timer;
+  rbuv_loop_t *rbuv_loop;
+
+  rb_scan_args(argc, argv, "01", &loop);
+  if (loop == Qnil) {
+    loop = rbuv_loop_s_default(cRbuvLoop);
+  }
+
+  Data_Get_Struct(self, rbuv_timer_t, rbuv_timer);
+  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
+  rbuv_timer->uv_handle = malloc(sizeof(*rbuv_timer->uv_handle));
+  uv_timer_init(rbuv_loop->uv_handle, rbuv_timer->uv_handle);
+  rbuv_timer->uv_handle->data = (void *)self;
+  rbuv_timer->loop = loop;
+
+  return self;
+}
+
+/*
+ * @overload start(timeout, repeat)
+ *   Start the timer.
+ *   @param timeout [Number] the timeout in millisecond.
+ *   @param repeat [Number] the repeat interval in millisecond.
+ *   @yieldparam timer [self] itself
+ *   @return [self] itself
+ */
 VALUE rbuv_timer_start(VALUE self, VALUE timeout, VALUE repeat) {
   VALUE block;
   uint64_t uv_timeout;
@@ -134,18 +100,19 @@ VALUE rbuv_timer_start(VALUE self, VALUE timeout, VALUE repeat) {
   Data_Get_Handle_Struct(self, rbuv_timer_t, rbuv_timer);
   rbuv_timer->cb_on_timeout = block;
 
-  RBUV_DEBUG_LOG_DETAIL("rbuv_timer: %p, uv_handle: %p, _uv_timer_on_timeout: %p, timer: %s",
-                        rbuv_timer, rbuv_timer->uv_handle, _uv_timer_on_timeout,
+  RBUV_DEBUG_LOG_DETAIL("rbuv_timer: %p, uv_handle: %p, rbuv_timer_on_timeout: %p, timer: %s",
+                        rbuv_timer, rbuv_timer->uv_handle, rbuv_timer_on_timeout,
                         RSTRING_PTR(rb_inspect(self)));
-  uv_timer_start(rbuv_timer->uv_handle, _uv_timer_on_timeout,
+  uv_timer_start(rbuv_timer->uv_handle, rbuv_timer_on_timeout,
                  uv_timeout, uv_repeat);
 
   return self;
 }
 
-/**
- * stop the timer.
- * @return self
+/*
+ * Stop the timer.
+ *
+ * @return [self] itself
  */
 VALUE rbuv_timer_stop(VALUE self) {
   rbuv_timer_t *rbuv_timer;
@@ -180,12 +147,16 @@ VALUE rbuv_timer_repeat_set(VALUE self, VALUE repeat) {
   return repeat;
 }
 
-void _uv_timer_on_timeout(uv_timer_t *uv_timer, int status) {
-  _uv_timer_on_timeout_no_gvl_arg_t reg = { .uv_timer = uv_timer, .status = status };
-  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)_uv_timer_on_timeout_no_gvl, &reg);
+void rbuv_timer_on_timeout(uv_timer_t *uv_timer, int status) {
+  rbuv_timer_on_timeout_arg_t reg = {
+    .uv_timer = uv_timer,
+    .status = status
+  };
+  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)
+                          rbuv_timer_on_timeout_no_gvl, &reg);
 }
 
-void _uv_timer_on_timeout_no_gvl(_uv_timer_on_timeout_no_gvl_arg_t *arg) {
+void rbuv_timer_on_timeout_no_gvl(rbuv_timer_on_timeout_arg_t *arg) {
   uv_timer_t *uv_timer = arg->uv_timer;
   int status = arg->status;
 
@@ -197,3 +168,33 @@ void _uv_timer_on_timeout_no_gvl(_uv_timer_on_timeout_no_gvl_arg_t *arg) {
 
   rb_funcall(rbuv_timer->cb_on_timeout, id_call, 1, timer);
 }
+
+void Init_rbuv_timer() {
+  cRbuvTimer = rb_define_class_under(mRbuv, "Timer", cRbuvHandle);
+  rb_define_alloc_func(cRbuvTimer, rbuv_timer_alloc);
+
+  rb_define_method(cRbuvTimer, "initialize", rbuv_timer_initialize, -1);
+  rb_define_method(cRbuvTimer, "start", rbuv_timer_start, 2);
+  rb_define_method(cRbuvTimer, "stop", rbuv_timer_stop, 0);
+  rb_define_method(cRbuvTimer, "repeat", rbuv_timer_repeat_get, 0);
+  rb_define_method(cRbuvTimer, "repeat=", rbuv_timer_repeat_set, 1);
+}
+
+/* This have to be declared after Init_* so it can replace YARD bad assumption
+ * for parent class beeing RbuvHandle not Rbuv::Handle.
+ * Also it need some text after document-class statement otherwise YARD won't
+ * parse it
+ */
+
+/*
+ * Document-class: Rbuv::Timer < Rbuv::Handle
+ * A Timer handle will run the supplied callback after the specified amount of
+ * seconds.
+ *
+ * @!attribute [rw] repeat
+ *   @note If the +repeat+ value is set from a timer callback it does not
+ *     immediately take effect. If the timer was non-repeating before, it will
+ *     have been stopped. If it was repeating, then the old repeat value will
+ *     have been used to schedule the next timeout.
+ *   @return [Number] the repeat interval in millisecond.
+ */
