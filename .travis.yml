@@ -7,3 +7,6 @@ rvm:
   - 2.1.2
   - 2.2.1
   - rbx-2.2.10
+script:
+  - "rake compile -- --with-uv-dir=$PWD/libuv --with-uv-lib=$PWD/libuv"
+  - rake spec
