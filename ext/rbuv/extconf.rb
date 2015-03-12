@@ -11,7 +11,7 @@ when /darwin/
 end
 
 dir_config('uv')
-libuv_ok = have_library('uv', 'uv_run', ['uv.h'])
+have_library('uv', 'uv_run', ['uv.h']) 
 
 ##
 # Adds -DRBUV_DEBUG for compilation
@@ -30,9 +30,3 @@ end
 
 create_header
 create_makefile('rbuv/rbuv')
-
-unless libuv_ok
-  File.open('Makefile', 'a') do |mf|
-    mf.puts('include ${srcdir}/libuv.mk')
-  end
-end
