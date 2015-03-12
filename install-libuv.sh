@@ -6,3 +6,5 @@ tar -xf libuv-${LIBUV}.tar.gz
 mv libuv-${LIBUV} libuv
 cd libuv
 make
+mkdir lib
+cp libuv* lib
