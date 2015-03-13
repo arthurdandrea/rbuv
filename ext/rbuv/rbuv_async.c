@@ -28,7 +28,7 @@ static VALUE rbuv_async_alloc(VALUE klass) {
   rbuv_async_t *rbuv_async;
 
   rbuv_async = malloc(sizeof(*rbuv_async));
-  rbuv_async->uv_handle = NULL;
+  rbuv_handle_alloc((rbuv_handle_t *)rbuv_async);
   rbuv_async->cb_on_async = Qnil;
   return Data_Wrap_Struct(klass, rbuv_async_mark, rbuv_async_free, rbuv_async);
 }

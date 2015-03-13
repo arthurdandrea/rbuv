@@ -28,7 +28,7 @@ VALUE rbuv_check_alloc(VALUE klass) {
   rbuv_check_t *rbuv_check;
 
   rbuv_check = malloc(sizeof(*rbuv_check));
-  rbuv_check->uv_handle = NULL;
+  rbuv_handle_alloc((rbuv_handle_t *)rbuv_check);
   rbuv_check->cb_on_check = Qnil;
   return Data_Wrap_Struct(klass, rbuv_check_mark, rbuv_check_free, rbuv_check);
 }

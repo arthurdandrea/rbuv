@@ -40,6 +40,10 @@ void rbuv_handle_unregister_loop(rbuv_handle_t *rbuv_handle) {
   }
 }
 
+void rbuv_handle_alloc(rbuv_handle_t *rbuv_handle) {
+  rbuv_handle->uv_handle = NULL;
+  rbuv_handle->cb_on_close = Qnil;
+}
 
 void rbuv_handle_mark(rbuv_handle_t *rbuv_handle) {
   rb_gc_mark(rbuv_handle->cb_on_close);

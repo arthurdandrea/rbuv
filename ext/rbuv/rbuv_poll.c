@@ -30,8 +30,7 @@ VALUE rbuv_poll_alloc(VALUE klass) {
   rbuv_poll_t *rbuv_poll;
 
   rbuv_poll = malloc(sizeof(*rbuv_poll));
-  rbuv_poll->uv_handle = NULL;
-  rbuv_poll->cb_on_close = Qnil;
+  rbuv_handle_alloc((rbuv_handle_t *)rbuv_poll);
   rbuv_poll->cb_on_available = Qnil;
   return Data_Wrap_Struct(klass, rbuv_poll_mark, rbuv_poll_free, rbuv_poll);
 }

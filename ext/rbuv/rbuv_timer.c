@@ -28,8 +28,7 @@ VALUE rbuv_timer_alloc(VALUE klass) {
   rbuv_timer_t *rbuv_timer;
 
   rbuv_timer = malloc(sizeof(*rbuv_timer));
-  rbuv_timer->uv_handle = NULL;
-  rbuv_timer->cb_on_close = Qnil;
+  rbuv_handle_alloc((rbuv_handle_t *)rbuv_timer);
   rbuv_timer->cb_on_timeout = Qnil;
   return Data_Wrap_Struct(klass, rbuv_timer_mark, rbuv_timer_free, rbuv_timer);
 }

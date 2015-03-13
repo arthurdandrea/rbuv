@@ -28,7 +28,7 @@ VALUE rbuv_signal_alloc(VALUE klass) {
   rbuv_signal_t *rbuv_signal;
 
   rbuv_signal = malloc(sizeof(*rbuv_signal));
-  rbuv_signal->uv_handle = NULL;
+  rbuv_handle_alloc((rbuv_handle_t *)rbuv_signal);
   rbuv_signal->cb_on_signal = Qnil;
 
   return Data_Wrap_Struct(klass, rbuv_signal_mark, rbuv_signal_free, rbuv_signal);

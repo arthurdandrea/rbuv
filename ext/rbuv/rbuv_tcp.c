@@ -32,9 +32,8 @@ VALUE rbuv_tcp_alloc(VALUE klass) {
   rbuv_tcp_t *rbuv_tcp;
 
   rbuv_tcp = malloc(sizeof(*rbuv_tcp));
-  rbuv_tcp->uv_handle = NULL;
+  rbuv_handle_alloc((rbuv_handle_t *)rbuv_tcp);
   rbuv_tcp->cbs_on_write = Qnil;
-  rbuv_tcp->cb_on_close = Qnil;
   rbuv_tcp->cb_on_connection = Qnil;
   rbuv_tcp->cb_on_read = Qnil;
   rbuv_tcp->cb_on_connect = Qnil;

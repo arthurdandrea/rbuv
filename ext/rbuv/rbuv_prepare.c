@@ -28,7 +28,7 @@ VALUE rbuv_prepare_alloc(VALUE klass) {
   rbuv_prepare_t *rbuv_prepare;
 
   rbuv_prepare = malloc(sizeof(*rbuv_prepare));
-  rbuv_prepare->uv_handle = NULL;
+  rbuv_handle_alloc((rbuv_handle_t *)rbuv_prepare);
   rbuv_prepare->cb_on_prepare = Qnil;
 
   return Data_Wrap_Struct(klass, rbuv_prepare_mark, rbuv_prepare_free,
