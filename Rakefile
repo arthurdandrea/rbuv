@@ -3,8 +3,6 @@ require 'rake/extensiontask'
 require 'rspec/core/rake_task'
 require 'yard'
 
-task :clean => ['deps:clean']
-
 RSpec::Core::RakeTask.new(:spec)
 task :spec => [:compile]
 
