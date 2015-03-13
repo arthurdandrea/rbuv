@@ -22,3 +22,4 @@ xcode/
 .rbx/
 .ruby-gemset
 .ruby-version
+libuv/

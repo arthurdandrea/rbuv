@@ -7,12 +7,6 @@ struct rbuv_async_s {
 };
 typedef struct rbuv_async_s rbuv_async_t;
 
-struct rbuv_async_on_async_arg_s {
-  uv_async_t *uv_async;
-  int status;
-};
-typedef struct rbuv_async_on_async_arg_s rbuv_async_on_async_arg_t;
-
 VALUE cRbuvAsync;
 
 /* Allocator / Mark / Deallocator */
@@ -21,8 +15,8 @@ static void rbuv_async_mark(rbuv_async_t *rbuv_async);
 static void rbuv_async_free(rbuv_async_t *rbuv_async);
 
 /* Private methods */
-static void rbuv_async_on_async(uv_async_t *uv_async, int status);
-static void rbuv_async_on_async_no_gvl(rbuv_async_on_async_arg_t *arg);
+static void rbuv_async_on_async(uv_async_t *uv_async);
+static void rbuv_async_on_async_no_gvl(uv_async_t *uv_async);
 
 static VALUE rbuv_async_alloc(VALUE klass) {
   rbuv_async_t *rbuv_async;
@@ -106,30 +100,18 @@ static VALUE rbuv_async_send(VALUE self) {
   return self;
 }
 
-static void rbuv_async_on_async(uv_async_t *uv_async, int status) {
-  rbuv_async_on_async_arg_t arg = {
-    .uv_async = uv_async,
-    .status = status
-  };
-  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_async_on_async_no_gvl, &arg);
+static void rbuv_async_on_async(uv_async_t *uv_async) {
+  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_async_on_async_no_gvl, uv_async);
 }
 
-static void rbuv_async_on_async_no_gvl(rbuv_async_on_async_arg_t *arg) {
-  uv_async_t *uv_async = arg->uv_async;
-  int status = arg->status;
-
+static void rbuv_async_on_async_no_gvl(uv_async_t *uv_async) {
   VALUE async;
   VALUE error;
   rbuv_async_t *rbuv_async;
 
   async = (VALUE)uv_async->data;
   Data_Get_Handle_Struct(async, struct rbuv_async_s, rbuv_async);
-  if (status < 0) {
-    uv_err_t err = uv_last_error(uv_async->loop);
-    error = rb_exc_new2(eRbuvError, uv_strerror(err));
-  } else {
-    error = Qnil;
-  }
+  error = Qnil;
   rb_funcall(rbuv_async->cb_on_async, id_call, 2, async, error);
 }
 

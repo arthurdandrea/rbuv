@@ -147,17 +147,15 @@ void rbuv_poll_on_available_no_gvl(rbuv_poll_on_available_arg_t *arg) {
   VALUE events;
   VALUE poll;
   VALUE error;
-  uv_err_t uv_err;
   rbuv_poll_t *rbuv_poll;
 
   poll = (VALUE)uv_poll->data;
   events = INT2FIX(arg->events);
   Data_Get_Handle_Struct(poll, struct rbuv_poll_s, rbuv_poll);
-  if (status == -1) {
-    uv_err = uv_last_error(uv_poll->loop);
-    RBUV_DEBUG_LOG_DETAIL("uv_poll: %p, status: %d, error: %s", uv_stream,
-                          status, uv_strerror(uv_err));
-    error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
+  if (status < 0) {
+    RBUV_DEBUG_LOG_DETAIL("uv_poll: %p, status: %d, error: %s", uv_poll,
+                          status, uv_strerror(status));
+    error = rb_exc_new2(eRbuvError, uv_strerror(status));
   } else {
     error = Qnil;
   }

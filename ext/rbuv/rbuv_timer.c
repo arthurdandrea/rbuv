@@ -9,20 +9,13 @@ struct rbuv_timer_s {
 };
 typedef struct rbuv_timer_s rbuv_timer_t;
 
-struct rbuv_timer_on_timeout_arg_s {
-  uv_timer_t *uv_timer;
-  int status;
-};
-typedef struct rbuv_timer_on_timeout_arg_s rbuv_timer_on_timeout_arg_t;
-
-
 static VALUE rbuv_timer_alloc(VALUE klass);
 static void rbuv_timer_mark(rbuv_timer_t *rbuv_timer);
 static void rbuv_timer_free(rbuv_timer_t *rbuv_timer);
 
 /* Private methods */
-static void rbuv_timer_on_timeout(uv_timer_t *uv_timer, int status);
-static void rbuv_timer_on_timeout_no_gvl(rbuv_timer_on_timeout_arg_t *arg);
+static void rbuv_timer_on_timeout(uv_timer_t *uv_timer);
+static void rbuv_timer_on_timeout_no_gvl(uv_timer_t *uv_timer);
 
 VALUE rbuv_timer_alloc(VALUE klass) {
   rbuv_timer_t *rbuv_timer;
@@ -142,19 +135,12 @@ VALUE rbuv_timer_repeat_set(VALUE self, VALUE repeat) {
   return repeat;
 }
 
-void rbuv_timer_on_timeout(uv_timer_t *uv_timer, int status) {
-  rbuv_timer_on_timeout_arg_t reg = {
-    .uv_timer = uv_timer,
-    .status = status
-  };
+void rbuv_timer_on_timeout(uv_timer_t *uv_timer) {
   rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)
-                          rbuv_timer_on_timeout_no_gvl, &reg);
+                          rbuv_timer_on_timeout_no_gvl, uv_timer);
 }
 
-void rbuv_timer_on_timeout_no_gvl(rbuv_timer_on_timeout_arg_t *arg) {
-  uv_timer_t *uv_timer = arg->uv_timer;
-  int status = arg->status;
-
+void rbuv_timer_on_timeout_no_gvl(uv_timer_t *uv_timer) {
   VALUE timer;
   rbuv_timer_t *rbuv_timer;
 

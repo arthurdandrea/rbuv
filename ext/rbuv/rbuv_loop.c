@@ -46,7 +46,8 @@ static VALUE rbuv_loop_alloc(VALUE klass) {
   VALUE loop;
 
   rbuv_loop = malloc(sizeof(*rbuv_loop));
-  rbuv_loop->uv_handle = uv_loop_new();
+  rbuv_loop->uv_handle = malloc(sizeof(*rbuv_loop->uv_handle));
+  uv_loop_init(rbuv_loop->uv_handle);
   rbuv_loop->is_default = 0;
 
   loop = Data_Wrap_Struct(klass, rbuv_loop_mark, rbuv_loop_free, rbuv_loop);
@@ -69,11 +70,13 @@ static void rbuv_loop_mark(rbuv_loop_t *rbuv_loop) {
 
 static void rbuv_loop_free(rbuv_loop_t *rbuv_loop) {
   RBUV_DEBUG_LOG_DETAIL("rbuv_loop: %p, uv_handle: %p", rbuv_loop, rbuv_loop->uv_handle);
-  RBUV_DEBUG_LOG_DETAIL("handles: %d", RHASH_SIZE(rbuv_loop->handles));
 
   uv_walk(rbuv_loop->uv_handle, rbuv_walk_unregister_cb, NULL);
   if (rbuv_loop->is_default == 0) {
-    uv_loop_delete(rbuv_loop->uv_handle);
+    uv_loop_close(rbuv_loop->uv_handle);
+    free(rbuv_loop->uv_handle);
+  } else {
+    uv_loop_close(rbuv_loop->uv_handle);
   }
 
   free(rbuv_loop);

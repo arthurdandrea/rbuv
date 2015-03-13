@@ -7,12 +7,6 @@ struct rbuv_prepare_s {
 };
 typedef struct rbuv_prepare_s rbuv_prepare_t;
 
-struct rbuv_prepare_on_prepare_arg_s {
-  uv_prepare_t *uv_prepare;
-  int status;
-};
-typedef struct rbuv_prepare_on_prepare_arg_s rbuv_prepare_on_prepare_arg_t;
-
 VALUE cRbuvPrepare;
 
 /* Allocator / Mark / Deallocator */
@@ -21,8 +15,8 @@ static void rbuv_prepare_mark(rbuv_prepare_t *rbuv_prepare);
 static void rbuv_prepare_free(rbuv_prepare_t *rbuv_prepare);
 
 /* Private methods */
-static void rbuv_prepare_on_prepare(uv_prepare_t *uv_prepare, int status);
-static void rbuv_prepare_on_prepare_no_gvl(rbuv_prepare_on_prepare_arg_t *arg);
+static void rbuv_prepare_on_prepare(uv_prepare_t *uv_prepare);
+static void rbuv_prepare_on_prepare_no_gvl(uv_prepare_t *uv_prepare);
 
 VALUE rbuv_prepare_alloc(VALUE klass) {
   rbuv_prepare_t *rbuv_prepare;
@@ -119,31 +113,19 @@ static VALUE rbuv_prepare_stop(VALUE self) {
   return self;
 }
 
-void rbuv_prepare_on_prepare(uv_prepare_t *uv_prepare, int status) {
-  rbuv_prepare_on_prepare_arg_t reg = {
-    .uv_prepare = uv_prepare,
-    .status = status
-  };
+void rbuv_prepare_on_prepare(uv_prepare_t *uv_prepare) {
   rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)
-    rbuv_prepare_on_prepare_no_gvl, &reg);
+    rbuv_prepare_on_prepare_no_gvl, uv_prepare);
 }
 
-void rbuv_prepare_on_prepare_no_gvl(rbuv_prepare_on_prepare_arg_t *arg) {
-  uv_prepare_t *uv_prepare = arg->uv_prepare;
-  int status = arg->status;
-
+void rbuv_prepare_on_prepare_no_gvl(uv_prepare_t *uv_prepare) {
   VALUE prepare;
   VALUE error;
   rbuv_prepare_t *rbuv_prepare;
 
   prepare = (VALUE)uv_prepare->data;
   Data_Get_Handle_Struct(prepare, struct rbuv_prepare_s, rbuv_prepare);
-  if (status < 0) {
-    uv_err_t err = uv_last_error(uv_prepare->loop);
-    error = rb_exc_new2(eRbuvError, uv_strerror(err));
-  } else {
-    error = Qnil;
-  }
+  error = Qnil;
   rb_funcall(rbuv_prepare->cb_on_prepare, id_call, 2, prepare, error);
 }
 

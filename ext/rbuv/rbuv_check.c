@@ -7,12 +7,6 @@ struct rbuv_check_s {
 };
 typedef struct rbuv_check_s rbuv_check_t;
 
-struct rbuv_check_on_check_arg_s {
-  uv_check_t *uv_check;
-  int status;
-};
-typedef struct rbuv_check_on_check_arg_s rbuv_check_on_check_arg_t;
-
 VALUE cRbuvCheck;
 
 /* Allocator / Mark / Deallocator */
@@ -21,8 +15,8 @@ static void rbuv_check_mark(rbuv_check_t *rbuv_check);
 static void rbuv_check_free(rbuv_check_t *rbuv_check);
 
 /* Private methods */
-static void rbuv_check_on_check(uv_check_t *uv_check, int status);
-static void rbuv_check_on_check_no_gvl(rbuv_check_on_check_arg_t *arg);
+static void rbuv_check_on_check(uv_check_t *uv_check);
+static void rbuv_check_on_check_no_gvl(uv_check_t *uv_check);
 
 VALUE rbuv_check_alloc(VALUE klass) {
   rbuv_check_t *rbuv_check;
@@ -114,27 +108,18 @@ static VALUE rbuv_check_stop(VALUE self) {
   return self;
 }
 
-void rbuv_check_on_check(uv_check_t *uv_check, int status) {
-  rbuv_check_on_check_arg_t reg = { .uv_check = uv_check, .status = status };
-  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_check_on_check_no_gvl, &reg);
+void rbuv_check_on_check(uv_check_t *uv_check) {
+  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_check_on_check_no_gvl, uv_check);
 }
 
-void rbuv_check_on_check_no_gvl(rbuv_check_on_check_arg_t *arg) {
-  uv_check_t *uv_check = arg->uv_check;
-  int status = arg->status;
-
+void rbuv_check_on_check_no_gvl(uv_check_t *uv_check) {
   VALUE check;
   VALUE error;
   rbuv_check_t *rbuv_check;
 
   check = (VALUE)uv_check->data;
   Data_Get_Handle_Struct(check, struct rbuv_check_s, rbuv_check);
-  if (status < 0) {
-    uv_err_t err = uv_last_error(uv_check->loop);
-    error = rb_exc_new2(eRbuvError, uv_strerror(err));
-  } else {
-    error = Qnil;
-  }
+  error = Qnil;
   rb_funcall(rbuv_check->cb_on_check, id_call, 2, check, error);
 }
 

@@ -45,7 +45,7 @@ void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp) {
   assert(rbuv_tcp);
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p, self: %lx",
                         rbuv_tcp, rbuv_tcp->uv_handle,
-                        (VALUE)rbuv_tcp->uv_handle->data);
+                        (rbuv_tcp->uv_handle == NULL ? (VALUE)Qnil : (VALUE)rbuv_tcp->uv_handle->data));
   rbuv_handle_mark((rbuv_handle_t *)rbuv_tcp);
   rb_gc_mark(rbuv_tcp->cbs_on_write);
   rb_gc_mark(rbuv_tcp->cb_on_connection);
@@ -79,7 +79,7 @@ static VALUE rbuv_tcp_initialize(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
   rbuv_tcp->uv_handle = malloc(sizeof(*rbuv_tcp->uv_handle));
-  uv_tcp_init(rbuv_loop->uv_handle, rbuv_tcp->uv_handle);
+  RBUV_CHECK_UV_RETURN(uv_tcp_init(rbuv_loop->uv_handle, rbuv_tcp->uv_handle));
   rbuv_tcp->uv_handle->data = (void *)self;
   return self;
 }
@@ -92,8 +92,7 @@ static VALUE rbuv_tcp_initialize(int argc, VALUE *argv, VALUE self) {
 static VALUE rbuv_tcp_enable_nodelay(VALUE self) {
   rbuv_tcp_t *rbuv_tcp;
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_nodelay(rbuv_tcp->uv_handle, 1),
-                       rbuv_tcp->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_tcp_nodelay(rbuv_tcp->uv_handle, 1));
   return self;
 }
 
@@ -105,8 +104,7 @@ static VALUE rbuv_tcp_enable_nodelay(VALUE self) {
 static VALUE rbuv_tcp_disable_nodelay(VALUE self) {
   rbuv_tcp_t *rbuv_tcp;
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_nodelay(rbuv_tcp->uv_handle, 0),
-                       rbuv_tcp->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_tcp_nodelay(rbuv_tcp->uv_handle, 0));
   return self;
 }
 
@@ -119,9 +117,7 @@ static VALUE rbuv_tcp_disable_nodelay(VALUE self) {
 static VALUE rbuv_tcp_enable_keepalive(VALUE self, VALUE delay) {
   rbuv_tcp_t *rbuv_tcp;
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_keepalive(rbuv_tcp->uv_handle, 1,
-                                        NUM2UINT(delay)),
-                       rbuv_tcp->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_tcp_keepalive(rbuv_tcp->uv_handle, 1, 1));
   return self;
 }
 
@@ -133,8 +129,7 @@ static VALUE rbuv_tcp_enable_keepalive(VALUE self, VALUE delay) {
 static VALUE rbuv_tcp_disable_keepalive(VALUE self) {
   rbuv_tcp_t *rbuv_tcp;
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_keepalive(rbuv_tcp->uv_handle, 0, 0),
-                       rbuv_tcp->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_tcp_keepalive(rbuv_tcp->uv_handle, 0, 0));
   return self;
 }
 
@@ -151,8 +146,7 @@ static VALUE rbuv_tcp_disable_keepalive(VALUE self) {
 static VALUE rbuv_tcp_enable_simultaneous_accepts(VALUE self) {
   rbuv_tcp_t *rbuv_tcp;
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_simultaneous_accepts(rbuv_tcp->uv_handle, 1),
-                       rbuv_tcp->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_tcp_simultaneous_accepts(rbuv_tcp->uv_handle, 1));
 
   return self;
 }
@@ -167,8 +161,7 @@ static VALUE rbuv_tcp_enable_simultaneous_accepts(VALUE self) {
 static VALUE rbuv_tcp_disable_simultaneous_accepts(VALUE self) {
   rbuv_tcp_t *rbuv_tcp;
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_simultaneous_accepts(rbuv_tcp->uv_handle, 0),
-                       rbuv_tcp->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_tcp_simultaneous_accepts(rbuv_tcp->uv_handle, 0));
   return self;
 }
 
@@ -179,8 +172,7 @@ static VALUE rbuv_tcp_getpeername(VALUE self) {
   struct sockaddr peername;
   int namelen = sizeof peername;
   RBUV_CHECK_UV_RETURN(uv_tcp_getpeername(rbuv_tcp->uv_handle, &peername,
-                                          &namelen),
-                       rbuv_tcp->uv_handle->loop);
+                                          &namelen));
   return rbuv_tcp_extractname(&peername, namelen);
 }
 
@@ -190,8 +182,7 @@ static VALUE rbuv_tcp_getsockname(VALUE self) {
   struct sockaddr sockname;
   int namelen = sizeof sockname;
   RBUV_CHECK_UV_RETURN(uv_tcp_getsockname(rbuv_tcp->uv_handle, &sockname,
-                                          &namelen),
-                       rbuv_tcp->uv_handle->loop);
+                                          &namelen));
   return rbuv_tcp_extractname(&sockname, namelen);
 }
 
@@ -245,11 +236,10 @@ static VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port) {
   uv_ip = RSTRING_PTR(ip);
   uv_port = FIX2INT(port);
 
-  bind_addr = uv_ip4_addr(uv_ip, uv_port);
+  uv_ip4_addr(uv_ip, uv_port, &bind_addr);
 
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
-  RBUV_CHECK_UV_RETURN(uv_tcp_bind(rbuv_tcp->uv_handle, bind_addr),
-                       rbuv_tcp->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_tcp_bind(rbuv_tcp->uv_handle, (const struct sockaddr *) &bind_addr, 0));
 
   RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
@@ -262,6 +252,9 @@ static VALUE rbuv_tcp_bind(VALUE self, VALUE ip, VALUE port) {
  * Connect this tcp object to the given address and port.
  * @param ip [String] the ip address to bind to
  * @param port [Number] the port to bind to
+ * @yield callback
+ * @yieldparam stream [self]
+ * @yieldparam error [Rbuv::Error, nil]
  * @return [self] itself
  */
 static VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port) {
@@ -282,11 +275,14 @@ static VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port) {
   rbuv_tcp->cb_on_connect = block;
 
   uv_connect = malloc(sizeof(*uv_connect));
-  connect_addr = uv_ip4_addr(uv_ip, uv_port);
+  RBUV_CHECK_UV_RETURN(uv_ip4_addr(uv_ip, uv_port, &connect_addr));
+  RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
+                        RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
+                        rbuv_tcp->uv_handle);
 
   RBUV_CHECK_UV_RETURN(uv_tcp_connect(uv_connect, rbuv_tcp->uv_handle,
-                                      connect_addr, rbuv_tcp_on_connect),
-                       rbuv_tcp->uv_handle->loop);
+                                      (const struct sockaddr *) &connect_addr,
+                                      rbuv_tcp_on_connect));
 
   RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
@@ -319,16 +315,16 @@ void rbuv_tcp_on_connect_no_gvl(rbuv_tcp_on_connect_arg_t *arg) {
   tcp = (VALUE)uv_stream->data;
   Data_Get_Handle_Struct(tcp, rbuv_tcp_t, rbuv_tcp);
   on_connect = rbuv_tcp->cb_on_connect;
+  rbuv_tcp->cb_on_connect = Qnil;
 
   RBUV_DEBUG_LOG_DETAIL("tcp: %s, on_connect: %s",
                         RSTRING_PTR(rb_inspect(tcp)),
                         RSTRING_PTR(rb_inspect(on_connect)));
 
-  if (status == -1) {
-    uv_err_t uv_err = uv_last_error(uv_stream->loop);
+  if (status < 0) {
     RBUV_DEBUG_LOG_DETAIL("uv_stream: %p, status: %d, error: %s", uv_stream, status,
-                          uv_strerror(uv_err));
-    error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
+                          uv_strerror(status));
+    error = rb_exc_new2(eRbuvError, uv_strerror(status));
   } else {
     error = Qnil;
   }

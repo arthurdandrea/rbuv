@@ -37,8 +37,8 @@ typedef struct {
 VALUE cRbuvStream;
 
 /* Private methods */
-static uv_buf_t rbuv_alloc_buffer(uv_handle_t *handle, size_t suggested_size);
-static void rbuv_stream_on_read(uv_stream_t *stream, ssize_t nread, uv_buf_t buf);
+static void rbuv_alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+static void rbuv_stream_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t* buf);
 static void rbuv_stream_on_read_no_gvl(rbuv_stream_on_read_arg_t *arg);
 static void rbuv_stream_on_write(uv_write_t *req, int status);
 static void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg);
@@ -76,7 +76,7 @@ static VALUE rbuv_stream_listen(VALUE self, VALUE backlog) {
                         rbuv_server,
                         rbuv_server->uv_handle,
                         rbuv_stream_on_connection);
-  RBUV_CHECK_UV_RETURN(uv_listen(rbuv_server->uv_handle, uv_backlog, rbuv_stream_on_connection), rbuv_server->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_listen(rbuv_server->uv_handle, uv_backlog, rbuv_stream_on_connection));
 
   return self;
 }
@@ -103,7 +103,7 @@ static VALUE rbuv_stream_accept(VALUE self, VALUE client) {
   Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_server);
   Data_Get_Handle_Struct(client, rbuv_stream_t, rbuv_client);
 
-  RBUV_CHECK_UV_RETURN(uv_accept(rbuv_server->uv_handle, rbuv_client->uv_handle), rbuv_client->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_accept(rbuv_server->uv_handle, rbuv_client->uv_handle));
 
   return self;
 }
@@ -242,10 +242,10 @@ VALUE rbuv_stream_write(VALUE self, VALUE data) {
                         RSTRING_PTR(rb_inspect(rbuv_stream->cbs_on_write)));
   req->rbuv_stream = rbuv_stream;
 
-  req->buf = uv_buf_init((char *)malloc(RSTRING_LEN(data)), (unsigned int)RSTRING_LEN(data));
+  req->buf = uv_buf_init((char *)malloc(sizeof(char) * RSTRING_LEN(data)), (unsigned int)RSTRING_LEN(data));
   memcpy(req->buf.base, RSTRING_PTR(data), RSTRING_LEN(data));
 
-  RBUV_CHECK_UV_RETURN(uv_write(&req->req, rbuv_stream->uv_handle, &req->buf, 1, rbuv_stream_on_write), rbuv_stream->uv_handle->loop);
+  RBUV_CHECK_UV_RETURN(uv_write(&req->req, rbuv_stream->uv_handle, &req->buf, 1, rbuv_stream_on_write));
 
   return self;
 }
@@ -266,7 +266,6 @@ void rbuv_stream_on_connection_no_gvl(rbuv_stream_on_connection_arg_t *arg) {
   rbuv_stream_t *rbuv_stream;
   VALUE on_connection;
   VALUE error;
-  uv_err_t uv_err;
 
   RBUV_DEBUG_LOG("uv_stream: %p, status: %d", uv_stream, status);
 
@@ -278,25 +277,25 @@ void rbuv_stream_on_connection_no_gvl(rbuv_stream_on_connection_arg_t *arg) {
                         RSTRING_PTR(rb_inspect(stream)),
                         RSTRING_PTR(rb_inspect(on_connection)));
 
-  if (status == -1) {
-    uv_err = uv_last_error(uv_stream->loop);
+  if (status < 0) {
     RBUV_DEBUG_LOG_DETAIL("uv_stream: %p, status: %d, error: %s", uv_stream, status,
-                          uv_strerror(uv_err));
-    error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
+                          uv_strerror(status));
+    error = rb_exc_new2(eRbuvError, uv_strerror(status));
   } else {
     error = Qnil;
   }
   rb_funcall(on_connection, id_call, 2, stream, error);
 }
 
-uv_buf_t rbuv_alloc_buffer(uv_handle_t *handle, size_t suggested_size) {
-  return uv_buf_init((char *)malloc(suggested_size), (unsigned int)suggested_size);
+void rbuv_alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
+  buf->base = malloc(suggested_size);
+  buf->len = suggested_size;
 }
 
-void rbuv_stream_on_read(uv_stream_t *uv_stream, ssize_t nread, uv_buf_t buf) {
+void rbuv_stream_on_read(uv_stream_t *uv_stream, ssize_t nread, const uv_buf_t *buf) {
   if (nread == 0) {
-    if (buf.base != NULL) {
-      free(buf.base);
+    if (buf->base != NULL) {
+      free(buf->base);
     }
     return;
   } else {
@@ -305,15 +304,15 @@ void rbuv_stream_on_read(uv_stream_t *uv_stream, ssize_t nread, uv_buf_t buf) {
     arg.nread = nread;
 
     if (nread < 0) {
-      if (buf.base != NULL) {
-        free(buf.base);
+      if (buf->base != NULL) {
+        free(buf->base);
       }
       arg.base = NULL;
     } else {
       // Here uvrb uses realloc. not sure about that
-      // buf.base = realloc(buf.base, nread);
-      // should we reassign buf.len = nread?
-      arg.base = buf.base;
+      // buf->base = realloc(buf->base, nread);
+      // should we reassign buf->len = nread?
+      arg.base = buf->base;
     }
     rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)
       rbuv_stream_on_read_no_gvl, &arg);
@@ -328,7 +327,6 @@ void rbuv_stream_on_read_no_gvl(rbuv_stream_on_read_arg_t *arg) {
   VALUE stream;
   rbuv_stream_t *rbuv_stream;
   VALUE on_read;
-  uv_err_t uv_err;
   VALUE error;
   VALUE data;
 
@@ -342,11 +340,10 @@ void rbuv_stream_on_read_no_gvl(rbuv_stream_on_read_arg_t *arg) {
                         RSTRING_PTR(rb_inspect(on_read)));
 
   if (nread < 0) {
-    uv_err = uv_last_error(uv_stream->loop);
-    if (uv_err.code == UV_EOF) {
+    if (nread == UV_EOF) {
       error = rb_exc_new2(rb_eEOFError, "end of file reached");
     } else {
-      error = rb_exc_new2(eRbuvError, uv_strerror(uv_err));
+      error = rb_exc_new2(eRbuvError, uv_strerror(nread));
     }
     data = Qnil;
   } else {
@@ -369,7 +366,7 @@ void rbuv_stream_on_write(uv_write_t *uv_req, int status) {
     free(rbuv_req->buf.base);
   }
   free(rbuv_req);
-rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_stream_on_write_no_gvl, &arg);
+  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_stream_on_write_no_gvl, &arg);
 }
 
 void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg) {
@@ -378,8 +375,8 @@ void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg) {
   rbuv_stream_t *rbuv_stream = arg->rbuv_stream;
 
   VALUE error = Qnil;
-  RBUV_DEBUG_LOG_DETAIL("cbs_on_write: %s",
-                      RSTRING_PTR(rb_inspect(rbuv_stream->cbs_on_write)));
+  RBUV_DEBUG_LOG_DETAIL("uv_stream: %p, cbs_on_write: %s",
+                      uv_stream, RSTRING_PTR(rb_inspect(rbuv_stream->cbs_on_write)));
 
   switch(TYPE(rbuv_stream->cbs_on_write)) {
     case T_NIL:
@@ -394,8 +391,7 @@ void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg) {
   }
 
   if ((arg->status < 0) && (error == Qnil)) {
-    uv_err_t err = uv_last_error(uv_stream->loop);
-    error = rb_exc_new2(eRbuvError, uv_strerror(err));
+    error = rb_exc_new2(eRbuvError, uv_strerror(arg->status));
   }
   RBUV_DEBUG_LOG_DETAIL("cb_on_write: %s, cbs_on_write: %s, error: %s",
                       RSTRING_PTR(rb_inspect(cb_on_write)),
