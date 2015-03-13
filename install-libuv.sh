@@ -7,5 +7,5 @@ mv libuv-${LIBUV} libuv
 cd libuv
 make
 mkdir lib
-ln -s libuv.so lib/libuv.so
-ln -s libuv.so lib/libuv.so.0.10
+ln -s ../libuv.so lib/libuv.so
+ln -s ../libuv.so lib/libuv.so.0.10
