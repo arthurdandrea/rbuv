@@ -1,4 +1,5 @@
 language: ruby
+sudo: false
 before_install:
   - ./install-libuv.sh
 rvm:
