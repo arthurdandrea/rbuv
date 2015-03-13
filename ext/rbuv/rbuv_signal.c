@@ -73,7 +73,7 @@ static VALUE rbuv_signal_initialize(int argc, VALUE *argv, VALUE self) {
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_signal: %p, uv_handle: %p, signal: %s",
                         rbuv_signal, rbuv_signal->uv_handle,
-                        RSTRING_PTR(rb_inspect(signal)));
+                        RSTRING_PTR(rb_inspect(self)));
 
   return self;
 }
@@ -101,7 +101,7 @@ static VALUE rbuv_signal_start(VALUE self, VALUE signum) {
   rbuv_signal->cb_on_signal = block;
 
   RBUV_DEBUG_LOG_DETAIL("rbuv_signal: %p, uv_handle: %p, rbuv_signal_on_signal: %p, signal: %s",
-                        rbuv_signal, rbuv_signal->uv_handle,rb_uv_signal_on_signal,
+                        rbuv_signal, rbuv_signal->uv_handle,rbuv_signal_on_signal,
                         RSTRING_PTR(rb_inspect(self)));
   uv_signal_start(rbuv_signal->uv_handle, rbuv_signal_on_signal, uv_signum);
 
