@@ -82,7 +82,7 @@ describe Rbuv::Tcp, :type => :handle do
           s = TCPServer.new '127.0.0.1', 60000
 
           subject.bind '127.0.0.1', 60000
-          expect { subject.listen(10) {} }.to raise_error
+          expect { subject.listen(10) {} }.to raise_error Rbuv::Error, /address already in use/
         ensure
           s.close
           subject.close
