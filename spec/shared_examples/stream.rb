@@ -8,6 +8,7 @@ shared_examples Rbuv::Stream do
       on_write = double
       expect(on_write).to receive(:call).once
       subject.write "string" do |error|
+        raise error if error
         on_write.call(error)
       end
       loop.run

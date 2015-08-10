@@ -29,7 +29,8 @@ describe Rbuv::Tcp, :type => :handle do
 
     before do
       loop.run do
-        subject.connect '127.0.0.1', 60000 do
+        subject.connect '127.0.0.1', 60000 do |tcp, error|
+          raise error if error
         end
       end
     end
@@ -216,7 +217,8 @@ describe Rbuv::Tcp, :type => :handle do
     it "writes to the stream" do
       loop.run do
         subject.connect('127.0.0.1', 60000) do
-          subject.write('test string') do
+          subject.write('test string') do |error|
+            raise error if error
             subject.close
           end
         end
