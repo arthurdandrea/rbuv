@@ -5,6 +5,7 @@ wget https://github.com/libuv/libuv/archive/v${LIBUV}.tar.gz --output-document l
 tar -xf libuv-${LIBUV}.tar.gz
 mv libuv-${LIBUV} libuv
 cd libuv
-sh autogen.sh
-./configure
+./autogen.sh
+./configure --prefix=$PWD/pkg
 make
+make install
