@@ -9,5 +9,5 @@ rvm:
   - 2.2
   - rbx-2
 script:
-  - "rake compile -- --with-uv-dir=$PWD/libuv/pkg"
-  - "LD_LIBRARY_PATH=$PWD/libuv/pkg/lib rake spec"
+  - "bundle exec rake compile -- --with-uv-dir=$PWD/libuv/pkg"
+  - "LD_LIBRARY_PATH=$PWD/libuv/pkg/lib bundle exec rake spec"
