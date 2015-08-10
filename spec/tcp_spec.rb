@@ -222,7 +222,7 @@ describe Rbuv::Tcp, :type => :handle do
         end
       end
       results = stop_server
-      expect(results).to eq(['test string'])
+      expect(results).to eq('test string')
     end
   end
 end
