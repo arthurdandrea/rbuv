@@ -27,10 +27,9 @@ describe Rbuv::Tcp, :type => :handle do
   it_should_behave_like Rbuv::Stream do
     include_context "an open tcp server", '127.0.0.1', 60000
 
-    around do |example|
+    before do
       loop.run do
         subject.connect '127.0.0.1', 60000 do
-          example.run
         end
       end
     end

@@ -10,6 +10,7 @@ shared_examples Rbuv::Stream do
       subject.write "string" do |error|
         on_write.call(error)
       end
+      loop.run
     end
 
     it "requires a argument" do

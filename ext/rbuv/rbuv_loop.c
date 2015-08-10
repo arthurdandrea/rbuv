@@ -28,6 +28,9 @@ struct rbuv_loop_run_arg_s {
 typedef struct rbuv_loop_run_arg_s rbuv_loop_run_arg_t;
 
 VALUE cRbuvLoop;
+VALUE RUN_DEFAULT_SYM;
+VALUE RUN_ONCE_SYM;
+VALUE RUN_NOWAIT_SYM;
 
 /* Allocator/deallocator */
 static VALUE rbuv_loop_alloc(VALUE klass);
@@ -38,7 +41,7 @@ static void rbuv_loop_free(rbuv_loop_t *rbuv_loop);
 static void rbuv_walk_ary_push_cb(uv_handle_t* uv_handle, void* arg);
 static void rbuv_walk_unregister_cb(uv_handle_t* uv_handle, void* arg);
 static void rbuv_walk_gc_mark_cb(uv_handle_t *uv_handle, void *arg);
-static void _rbuv_loop_run(VALUE self, uv_run_mode mode);
+static VALUE _rbuv_loop_run(VALUE self);
 static void _rbuv_loop_run_no_gvl(rbuv_loop_run_arg_t *arg);
 
 static VALUE rbuv_loop_alloc(VALUE klass) {
@@ -49,6 +52,7 @@ static VALUE rbuv_loop_alloc(VALUE klass) {
   rbuv_loop->uv_handle = malloc(sizeof(*rbuv_loop->uv_handle));
   uv_loop_init(rbuv_loop->uv_handle);
   rbuv_loop->is_default = 0;
+  rbuv_loop->run_mode = Qnil;
 
   loop = Data_Wrap_Struct(klass, rbuv_loop_mark, rbuv_loop_free, rbuv_loop);
   rbuv_loop->uv_handle->data = (void *)loop;
@@ -66,6 +70,7 @@ static void rbuv_loop_mark(rbuv_loop_t *rbuv_loop) {
                         rbuv_loop, rbuv_loop->uv_handle,
                         (VALUE)rbuv_loop->uv_handle->data);
   uv_walk(rbuv_loop->uv_handle, rbuv_walk_gc_mark_cb, NULL);
+  rb_gc_mark(rbuv_loop->run_mode); // TODO: should it really mark?
 }
 
 static void rbuv_loop_free(rbuv_loop_t *rbuv_loop) {
@@ -91,6 +96,7 @@ VALUE rbuv_loop_s_default(VALUE klass) {
     rbuv_loop = malloc(sizeof(*rbuv_loop));
     rbuv_loop->uv_handle = uv_default_loop();
     rbuv_loop->is_default = 1;
+    rbuv_loop->run_mode = Qnil;
 
     loop = Data_Wrap_Struct(klass, rbuv_loop_mark, rbuv_loop_free, rbuv_loop);
     rbuv_loop->uv_handle->data = (void *)loop;
@@ -104,6 +110,20 @@ VALUE rbuv_loop_s_default(VALUE klass) {
   return loop;
 }
 
+static void _rbuv_loop_before_run(VALUE self, VALUE run_mode) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  if (rbuv_loop->run_mode != Qnil) {
+    rb_raise(eRbuvError, "This %s loop is already running", rb_obj_classname(self));
+  }
+  rbuv_loop->run_mode = run_mode;
+}
+
+static VALUE _rbuv_loop_after_run(VALUE self) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  rbuv_loop->run_mode = Qnil;
+}
 /*
  * Runs the event loop until the reference count drops to zero.
  * @yield If the block is passed, calls it right before the first loop
@@ -112,7 +132,8 @@ VALUE rbuv_loop_s_default(VALUE klass) {
  * @return [self] itself
  */
 static VALUE rbuv_loop_run(VALUE self) {
-  _rbuv_loop_run(self, UV_RUN_DEFAULT);
+  _rbuv_loop_before_run(self, RUN_DEFAULT_SYM);
+  rb_ensure(_rbuv_loop_run, self, _rbuv_loop_after_run, self);
   return self;
 }
 
@@ -125,7 +146,8 @@ static VALUE rbuv_loop_run(VALUE self) {
  * @return (see #run)
  */
 static VALUE rbuv_loop_run_once(VALUE self) {
-  _rbuv_loop_run(self, UV_RUN_ONCE);
+  _rbuv_loop_before_run(self, RUN_ONCE_SYM);
+  rb_ensure(_rbuv_loop_run, self, _rbuv_loop_after_run, self);
   return self;
 }
 
@@ -138,7 +160,8 @@ static VALUE rbuv_loop_run_once(VALUE self) {
  * @return (see #run)
  */
 static VALUE rbuv_loop_run_nowait(VALUE self) {
-  _rbuv_loop_run(self, UV_RUN_NOWAIT);
+  _rbuv_loop_before_run(self, RUN_NOWAIT_SYM);
+  rb_ensure(_rbuv_loop_run, self, _rbuv_loop_after_run, self);
   return self;
 }
 
@@ -203,16 +226,24 @@ void rbuv_walk_gc_mark_cb(uv_handle_t *uv_handle, void *arg) {
   rb_gc_mark(handle);
 }
 
-void _rbuv_loop_run(VALUE self, uv_run_mode mode) {
+VALUE _rbuv_loop_run(VALUE self) {
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  rbuv_loop_run_arg_t arg;
+  arg.loop = rbuv_loop->uv_handle;
+  uv_run_mode mode;
+  if (rbuv_loop->run_mode == RUN_DEFAULT_SYM) {
+    arg.mode = UV_RUN_DEFAULT;
+  } else if (rbuv_loop->run_mode == RUN_ONCE_SYM) {
+    arg.mode = UV_RUN_ONCE;
+  } else if (rbuv_loop->run_mode == RUN_NOWAIT_SYM) {
+    arg.mode = UV_RUN_NOWAIT;
+  } else {
+    arg.mode = UV_RUN_DEFAULT; // TODO: raise error? better implementation?
+  }
   if (rb_block_given_p()) {
     rb_yield(self);
   }
-  rbuv_loop_run_arg_t arg = {
-    .mode = mode,
-    .loop = rbuv_loop->uv_handle
-  };
 #ifdef HAVE_RB_THREAD_CALL_WITHOUT_GVL
   rb_thread_call_without_gvl((rbuv_rb_blocking_function_t)_rbuv_loop_run_no_gvl,
                              &arg, RUBY_UBF_IO, 0);
@@ -237,5 +268,11 @@ void Init_rbuv_loop() {
   rb_define_method(cRbuvLoop, "handles", rbuv_loop_get_handles, 0);
   rb_define_method(cRbuvLoop, "ref_count", rbuv_loop_get_ref_count, 0);
   rb_define_method(cRbuvLoop, "inspect", rbuv_loop_inspect, 0);
+  RUN_DEFAULT_SYM = ID2SYM(rb_intern("run_default"));
+  rb_define_const(cRbuvLoop, "RUN_DEFAULT", RUN_DEFAULT_SYM);
+  RUN_ONCE_SYM = ID2SYM(rb_intern("run_once"));
+  rb_define_const(cRbuvLoop, "RUN_ONCE", RUN_ONCE_SYM);
+  RUN_NOWAIT_SYM = ID2SYM(rb_intern("run_nowait"));
+  rb_define_const(cRbuvLoop, "RUN_NOWAIT", RUN_NOWAIT_SYM);
   rb_define_singleton_method(cRbuvLoop, "default", rbuv_loop_s_default, 0);
 }

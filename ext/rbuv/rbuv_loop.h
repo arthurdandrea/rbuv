@@ -6,6 +6,7 @@
 struct rbuv_loop_s {
   uv_loop_t* uv_handle;
   int is_default;
+  VALUE run_mode;
 };
 typedef struct rbuv_loop_s rbuv_loop_t;
 
