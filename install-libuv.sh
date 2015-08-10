@@ -6,6 +6,6 @@ tar -xf libuv-${LIBUV}.tar.gz
 mv libuv-${LIBUV} libuv
 cd libuv
 ./autogen.sh
-./configure --prefix=$PWD/pkg
+./configure --prefix=$PWD/pkg --disable-shared --enable-static
 make
 make install
