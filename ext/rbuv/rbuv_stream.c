@@ -44,7 +44,7 @@ static void rbuv_stream_on_write(uv_write_t *req, int status);
 static void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg);
 static void rbuv_stream_on_connection(uv_stream_t *uv_stream, int status);
 static void rbuv_stream_on_connection_no_gvl(rbuv_stream_on_connection_arg_t *arg);
-static VALUE rbuv_ary_delete_same_object(VALUE ary, VALUE obj);
+static void rbuv_ary_delete_same_object(VALUE ary, VALUE obj);
 
 /* @overload listen(backlog)
  *   Listen for incomining connections
@@ -382,8 +382,7 @@ void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg) {
     case T_NIL:
       break;
     case T_ARRAY:
-      rbuv_stream->cbs_on_write = rbuv_ary_delete_same_object(
-                                  rbuv_stream->cbs_on_write, cb_on_write);
+      rbuv_ary_delete_same_object(rbuv_stream->cbs_on_write, cb_on_write);
       break;
     default:
       rbuv_stream->cbs_on_write = Qnil;
@@ -401,7 +400,7 @@ void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg) {
   rb_funcall(cb_on_write, id_call, 1, error);
 }
 
-VALUE rbuv_ary_delete_same_object(VALUE ary, VALUE obj) {
+void rbuv_ary_delete_same_object(VALUE ary, VALUE obj) {
   long i;
   for (i = 0; i < RARRAY_LEN(ary); i++) {
     if (rb_ary_entry(ary, i) == obj) {
@@ -409,7 +408,6 @@ VALUE rbuv_ary_delete_same_object(VALUE ary, VALUE obj) {
       break;
     }
   }
-  return ary;
 }
 
 void Init_rbuv_stream() {
