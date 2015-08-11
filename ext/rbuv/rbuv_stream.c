@@ -225,9 +225,6 @@ VALUE rbuv_stream_write(VALUE self, VALUE data) {
   req = malloc(sizeof(*req));
   req->cb_on_write = block;
   switch(TYPE(rbuv_stream->cbs_on_write)) {
-    case T_DATA: // Proc
-      rbuv_stream->cbs_on_write = rb_ary_new3(2, req->cb_on_write, rbuv_stream->cbs_on_write);
-      break;
     case T_NIL:
       rbuv_stream->cbs_on_write = req->cb_on_write;
       break;
@@ -235,8 +232,8 @@ VALUE rbuv_stream_write(VALUE self, VALUE data) {
       rb_ary_push(rbuv_stream->cbs_on_write, req->cb_on_write);
       break;
     default:
-      rb_raise(rb_eTypeError, "not valid value");
-      return Qnil;
+      rbuv_stream->cbs_on_write = rb_ary_new3(2, req->cb_on_write, rbuv_stream->cbs_on_write);
+      break;
   }
   RBUV_DEBUG_LOG_DETAIL("cbs_on_write: %s",
                         RSTRING_PTR(rb_inspect(rbuv_stream->cbs_on_write)));
