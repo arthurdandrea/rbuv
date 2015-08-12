@@ -29,9 +29,7 @@ VALUE rbuv_check_alloc(VALUE klass) {
 
 void rbuv_check_mark(rbuv_check_t *rbuv_check) {
   assert(rbuv_check);
-  RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p, self: %lx",
-                        rbuv_check, rbuv_check->uv_handle,
-                        (VALUE)rbuv_check->uv_handle->data);
+  RBUV_DEBUG_LOG_DETAIL("rbuv_check: %p, uv_handle: %p", rbuv_check, rbuv_check->uv_handle);
   rbuv_handle_mark((rbuv_handle_t *)rbuv_check);
   rb_gc_mark(rbuv_check->cb_on_check);
 }

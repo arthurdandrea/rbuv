@@ -43,9 +43,7 @@ VALUE rbuv_tcp_alloc(VALUE klass) {
 
 void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp) {
   assert(rbuv_tcp);
-  RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p, self: %lx",
-                        rbuv_tcp, rbuv_tcp->uv_handle,
-                        (rbuv_tcp->uv_handle == NULL ? (VALUE)Qnil : (VALUE)rbuv_tcp->uv_handle->data));
+  RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p", rbuv_tcp, rbuv_tcp->uv_handle);
   rbuv_handle_mark((rbuv_handle_t *)rbuv_tcp);
   rb_gc_mark(rbuv_tcp->cbs_on_write);
   rb_gc_mark(rbuv_tcp->cb_on_connection);

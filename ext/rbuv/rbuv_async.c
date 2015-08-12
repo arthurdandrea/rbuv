@@ -29,9 +29,8 @@ static VALUE rbuv_async_alloc(VALUE klass) {
 
 static void rbuv_async_mark(rbuv_async_t *rbuv_async) {
   assert(rbuv_async);
-  RBUV_DEBUG_LOG_DETAIL("rbuv_async: %p, uv_handle: %p, self: %lx",
-                        rbuv_async, rbuv_async->uv_handle,
-                        (VALUE)rbuv_async->uv_handle->data);
+
+  RBUV_DEBUG_LOG_DETAIL("rbuv_async: %p, uv_handle: %p", rbuv_async, rbuv_async->uv_handle);
   rbuv_handle_mark((rbuv_handle_t *)rbuv_async);
   rb_gc_mark(rbuv_async->cb_on_async);
 }

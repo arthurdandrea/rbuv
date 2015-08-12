@@ -31,9 +31,8 @@ VALUE rbuv_prepare_alloc(VALUE klass) {
 
 void rbuv_prepare_mark(rbuv_prepare_t *rbuv_prepare) {
   assert(rbuv_prepare);
-  RBUV_DEBUG_LOG_DETAIL("rbuv_prepare: %p, uv_handle: %p, self: %lx",
-                        rbuv_prepare, rbuv_prepare->uv_handle,
-                        (VALUE)rbuv_prepare->uv_handle->data);
+  RBUV_DEBUG_LOG_DETAIL("rbuv_prepare: %p, uv_handle: %p",
+                        rbuv_prepare, rbuv_prepare->uv_handle);
   rbuv_handle_mark((rbuv_handle_t *)rbuv_prepare);
   rb_gc_mark(rbuv_prepare->cb_on_prepare);
 }
