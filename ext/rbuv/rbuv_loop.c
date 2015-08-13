@@ -123,6 +123,7 @@ static VALUE _rbuv_loop_after_run(VALUE self) {
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
   rbuv_loop->run_mode = Qnil;
+  return self;
 }
 /*
  * Runs the event loop until the reference count drops to zero.
@@ -251,6 +252,7 @@ VALUE _rbuv_loop_run(VALUE self) {
   rb_thread_blocking_region((rb_blocking_function_t *)_rbuv_loop_run_no_gvl,
                             &arg, RUBY_UBF_IO, 0);
 #endif
+  return self;
 }
 
 void _rbuv_loop_run_no_gvl(rbuv_loop_run_arg_t *arg) {
