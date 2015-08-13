@@ -67,6 +67,7 @@ void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp) {
  */
 static VALUE rbuv_tcp_initialize(int argc, VALUE *argv, VALUE self) {
   VALUE loop;
+  int uv_ret;
   rb_scan_args(argc, argv, "01", &loop);
   if (loop == Qnil) {
     loop = rbuv_loop_s_default(cRbuvLoop);
@@ -77,7 +78,12 @@ static VALUE rbuv_tcp_initialize(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   Data_Get_Struct(self, rbuv_tcp_t, rbuv_tcp);
   rbuv_tcp->uv_handle = malloc(sizeof(*rbuv_tcp->uv_handle));
-  RBUV_CHECK_UV_RETURN(uv_tcp_init(rbuv_loop->uv_handle, rbuv_tcp->uv_handle));
+  uv_ret = uv_tcp_init(rbuv_loop->uv_handle, rbuv_tcp->uv_handle);
+  if (uv_ret < 0) {
+    free(rbuv_tcp->uv_handle);
+    rbuv_tcp->uv_handle = NULL;
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+  }
   rbuv_tcp->uv_handle->data = (void *)self;
   return self;
 }
@@ -262,6 +268,7 @@ static VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port) {
   rbuv_tcp_t *rbuv_tcp;
   struct sockaddr_in connect_addr;
   uv_connect_t *uv_connect;
+  int uv_ret;
 
   rb_need_block();
   block = rb_block_proc();
@@ -272,16 +279,25 @@ static VALUE rbuv_tcp_connect(VALUE self, VALUE ip, VALUE port) {
   Data_Get_Handle_Struct(self, rbuv_tcp_t, rbuv_tcp);
   rbuv_tcp->cb_on_connect = block;
 
-  uv_connect = malloc(sizeof(*uv_connect));
-  RBUV_CHECK_UV_RETURN(uv_ip4_addr(uv_ip, uv_port, &connect_addr));
+  uv_ret = uv_ip4_addr(uv_ip, uv_port, &connect_addr);
+  if (uv_ret < 0) {
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+    return Qnil;
+  }
   RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
                         rbuv_tcp->uv_handle);
 
-  RBUV_CHECK_UV_RETURN(uv_tcp_connect(uv_connect, rbuv_tcp->uv_handle,
+  uv_connect = malloc(sizeof(*uv_connect));
+  uv_ret = uv_tcp_connect(uv_connect, rbuv_tcp->uv_handle,
                                       (const struct sockaddr *) &connect_addr,
-                                      rbuv_tcp_on_connect));
-
+                                      rbuv_tcp_on_connect);
+  if (uv_ret < 0) {
+    free(uv_connect);
+    uv_connect = NULL;
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+    return Qnil;
+  }
   RBUV_DEBUG_LOG_DETAIL("self: %s, ip: %s, port: %d, rbuv_tcp: %p, uv_handle: %p",
                         RSTRING_PTR(rb_inspect(self)), uv_ip, uv_port, rbuv_tcp,
                         rbuv_tcp->uv_handle);
