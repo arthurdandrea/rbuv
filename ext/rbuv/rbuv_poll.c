@@ -63,6 +63,7 @@ static VALUE rbuv_poll_initialize(int argc, VALUE *argv, VALUE self) {
   rbuv_loop_t *rbuv_loop;
   VALUE loop;
   VALUE fd;
+  int uv_ret;
   rb_scan_args(argc, argv, "11", &loop, &fd);
   if (fd == Qnil) {
     fd = loop;
@@ -76,9 +77,13 @@ static VALUE rbuv_poll_initialize(int argc, VALUE *argv, VALUE self) {
   }
   Data_Get_Struct(self, rbuv_poll_t, rbuv_poll);
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
-
   rbuv_poll->uv_handle = malloc(sizeof(*rbuv_poll->uv_handle));
-  uv_poll_init(rbuv_loop->uv_handle, rbuv_poll->uv_handle, FIX2INT(fd));
+  uv_ret = uv_poll_init(rbuv_loop->uv_handle, rbuv_poll->uv_handle, FIX2INT(fd));
+  if (uv_ret < 0) {
+    free(rbuv_poll->uv_handle);
+    rbuv_poll->uv_handle = NULL;
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+  }
   rbuv_poll->uv_handle->data = (void *)self;
 
   return self;

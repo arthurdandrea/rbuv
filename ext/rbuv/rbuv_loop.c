@@ -47,10 +47,18 @@ static void _rbuv_loop_run_no_gvl(rbuv_loop_run_arg_t *arg);
 static VALUE rbuv_loop_alloc(VALUE klass) {
   rbuv_loop_t *rbuv_loop;
   VALUE loop;
+  int uv_ret;
 
   rbuv_loop = malloc(sizeof(*rbuv_loop));
   rbuv_loop->uv_handle = malloc(sizeof(*rbuv_loop->uv_handle));
-  uv_loop_init(rbuv_loop->uv_handle);
+  uv_ret = uv_loop_init(rbuv_loop->uv_handle);
+  if (uv_ret < 0) {
+    free(rbuv_loop->uv_handle);
+    rbuv_loop->uv_handle = NULL;
+    free(rbuv_loop);
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+    return Qnil;
+  }
   rbuv_loop->is_default = 0;
   rbuv_loop->run_mode = Qnil;
 

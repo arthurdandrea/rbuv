@@ -51,6 +51,7 @@ static VALUE rbuv_timer_initialize(int argc, VALUE *argv, VALUE self) {
   VALUE loop;
   rbuv_timer_t *rbuv_timer;
   rbuv_loop_t *rbuv_loop;
+  int uv_ret;
 
   rb_scan_args(argc, argv, "01", &loop);
   if (loop == Qnil) {
@@ -60,7 +61,12 @@ static VALUE rbuv_timer_initialize(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(self, rbuv_timer_t, rbuv_timer);
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   rbuv_timer->uv_handle = malloc(sizeof(*rbuv_timer->uv_handle));
-  uv_timer_init(rbuv_loop->uv_handle, rbuv_timer->uv_handle);
+  uv_ret = uv_timer_init(rbuv_loop->uv_handle, rbuv_timer->uv_handle);
+  if (uv_ret < 0) {
+    free(rbuv_timer->uv_handle);
+    rbuv_timer->uv_handle = NULL;
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+  }
   rbuv_timer->uv_handle->data = (void *)self;
 
   return self;

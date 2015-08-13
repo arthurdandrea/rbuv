@@ -53,6 +53,7 @@ static VALUE rbuv_prepare_initialize(int argc, VALUE *argv, VALUE self) {
   rbuv_prepare_t *rbuv_prepare;
   rbuv_loop_t *rbuv_loop;
   VALUE loop;
+  int uv_ret;
 
   rb_scan_args(argc, argv, "01", &loop);
   if (loop == Qnil) {
@@ -63,7 +64,12 @@ static VALUE rbuv_prepare_initialize(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
 
   rbuv_prepare->uv_handle = malloc(sizeof(*rbuv_prepare->uv_handle));
-  uv_prepare_init(rbuv_loop->uv_handle, rbuv_prepare->uv_handle);
+  uv_ret = uv_prepare_init(rbuv_loop->uv_handle, rbuv_prepare->uv_handle);
+  if (uv_ret < 0) {
+    free(rbuv_prepare->uv_handle);
+    rbuv_prepare->uv_handle = NULL;
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+  }
   rbuv_prepare->uv_handle->data = (void *)self;
 
   return self;
