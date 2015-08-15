@@ -1,6 +1,10 @@
 require 'spec_helper'
 
 describe Rbuv::Loop do
+  after do
+    subject.dispose
+  end
+
   context ".default" do
     it "returns a loop" do
       expect(Rbuv::Loop.default).to be_a Rbuv::Loop
@@ -88,6 +92,32 @@ describe Rbuv::Loop do
       subject.run do |*args|
         on_run.call(*args)
       end
+    end
+  end
+
+  context "#now" do
+    it "is cached" do
+      cached_now = subject.now
+      5.times do
+        expect(subject.now).to eq(cached_now)
+        sleep(0.001)
+      end
+    end
+
+    it "changes on different runs" do
+      start = subject.now
+      while subject.now - start < 500
+        subject.run_nowait
+      end
+    end
+  end
+
+  context "#update_time" do
+    it "changes #now" do
+      cached_now = subject.now
+      sleep(0.001)
+      subject.update_time
+      expect(subject.now).to_not eq(cached_now)
     end
   end
 end

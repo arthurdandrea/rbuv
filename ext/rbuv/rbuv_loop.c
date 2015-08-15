@@ -213,6 +213,19 @@ static VALUE rbuv_loop_inspect(VALUE self) {
                     RSTRING_PTR(rb_inspect(rbuv_loop_get_handles(self))));
 }
 
+static VALUE rbuv_loop_now(VALUE self) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  uint64_t now = uv_now(rbuv_loop->uv_handle);
+  return UINT2NUM(now);
+}
+
+static VALUE rbuv_loop_update_time(VALUE self) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  uv_update_time(rbuv_loop->uv_handle);
+  return self;
+}
 /* Private methods */
 
 void rbuv_walk_ary_push_cb(uv_handle_t* uv_handle, void* arg) {
@@ -278,6 +291,8 @@ void Init_rbuv_loop() {
   rb_define_method(cRbuvLoop, "handles", rbuv_loop_get_handles, 0);
   rb_define_method(cRbuvLoop, "ref_count", rbuv_loop_get_ref_count, 0);
   rb_define_method(cRbuvLoop, "inspect", rbuv_loop_inspect, 0);
+  rb_define_method(cRbuvLoop, "now", rbuv_loop_now, 0);
+  rb_define_method(cRbuvLoop, "update_time", rbuv_loop_update_time, 0);
   RUN_DEFAULT_SYM = ID2SYM(rb_intern("run_default"));
   rb_define_const(cRbuvLoop, "RUN_DEFAULT", RUN_DEFAULT_SYM);
   RUN_ONCE_SYM = ID2SYM(rb_intern("run_once"));
