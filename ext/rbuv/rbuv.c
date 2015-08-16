@@ -28,6 +28,7 @@ void Init_rbuv() {
 
   Init_rbuv_request();
   Init_rbuv_write();
+  Init_rbuv_shutdown();
 }
 
 /* Document-module: Rbuv

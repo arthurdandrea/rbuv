@@ -15,6 +15,11 @@ typedef struct {
 } rbuv_stream_on_connection_arg_t;
 
 typedef struct {
+  uv_shutdown_t *uv_req;
+  int status;
+} rbuv_stream_on_shutdown_arg_t;
+
+typedef struct {
   uv_stream_t *uv_stream;
   ssize_t nread;
   char *base;
@@ -35,6 +40,8 @@ static void rbuv_stream_on_write(uv_write_t *req, int status);
 static void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg);
 static void rbuv_stream_on_connection(uv_stream_t *uv_stream, int status);
 static void rbuv_stream_on_connection_no_gvl(rbuv_stream_on_connection_arg_t *arg);
+static void rbuv_stream_on_shutdown(uv_shutdown_t *uv_req, int status);
+static void rbuv_stream_on_shutdown_no_gvl(rbuv_stream_on_shutdown_arg_t *uv_stream);
 static void rbuv_ary_delete_same_object(VALUE ary, VALUE obj);
 
 /* @overload listen(backlog)
@@ -128,12 +135,28 @@ static VALUE rbuv_stream_is_writable(VALUE self) {
  */
 static VALUE rbuv_stream_shutdown(VALUE self) {
   rbuv_stream_t *rbuv_stream;
+  rbuv_shutdown_t *rbuv_shutdown;
+  int uv_ret;
 
+  rb_need_block();
   Data_Get_Handle_Struct(self, rbuv_stream_t, rbuv_stream);
 
-  rb_raise(rb_eNotImpError, __func__);
-
-  return self;
+  rbuv_shutdown = malloc(sizeof(*rbuv_shutdown));
+  rbuv_shutdown->uv_req = malloc(sizeof(*rbuv_shutdown->uv_req));
+  rbuv_shutdown->cb_on_shutdown = rb_block_proc();
+  uv_ret = uv_shutdown(rbuv_shutdown->uv_req, rbuv_stream->uv_handle, rbuv_stream_on_shutdown);
+  if (uv_ret < 0) {
+    free(rbuv_shutdown->uv_req);
+    rbuv_shutdown->uv_req = NULL;
+    free(rbuv_shutdown);
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+    return Qnil;
+  } else {
+    VALUE request = Data_Wrap_Struct(cRbuvStreamShutdownRequest, rbuv_shutdown_mark, rbuv_shutdown_free, rbuv_shutdown);
+    rbuv_shutdown->uv_req->data = (void *)request;
+    rb_ary_push(rbuv_stream->requests, request);
+    return request;
+  }
 }
 
 /*
@@ -369,6 +392,39 @@ void rbuv_stream_on_write_no_gvl(rbuv_stream_on_write_arg_t *arg) {
   //                     RSTRING_PTR(rb_inspect(error)));
 
   rb_funcall(rbuv_write->cb_on_write, id_call, 1, error);
+}
+
+void rbuv_stream_on_shutdown(uv_shutdown_t *uv_req, int status) {
+  rbuv_stream_on_shutdown_arg_t arg = {
+    .uv_req = uv_req,
+    .status = status
+  };
+  rb_thread_call_with_gvl((rbuv_rb_blocking_function_t)rbuv_stream_on_shutdown_no_gvl, &arg);
+}
+
+void rbuv_stream_on_shutdown_no_gvl(rbuv_stream_on_shutdown_arg_t *arg) {
+  rbuv_stream_t *rbuv_stream;
+  rbuv_shutdown_t *rbuv_shutdown;
+  VALUE request;
+  VALUE stream;
+  VALUE error;
+
+  request = (VALUE) arg->uv_req->data;
+  Data_Get_Struct(request, rbuv_shutdown_t, rbuv_shutdown);
+  if (rbuv_shutdown->uv_req != NULL) {
+    free(rbuv_shutdown->uv_req);
+    rbuv_shutdown->uv_req = NULL;
+  }
+  stream = (VALUE) arg->uv_req->handle->data;
+  Data_Get_Struct(stream, rbuv_stream_t, rbuv_stream);
+  rbuv_ary_delete_same_object(rbuv_stream->requests, request);
+
+  if (arg->status < 0) {
+    error = rb_exc_new2(eRbuvError, uv_strerror(arg->status));
+  } else {
+    error = Qnil;
+  }
+  rb_funcall(rbuv_shutdown->cb_on_shutdown, id_call, 1, error);
 }
 
 void rbuv_ary_delete_same_object(VALUE ary, VALUE obj) {
