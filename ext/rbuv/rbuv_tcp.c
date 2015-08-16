@@ -5,7 +5,7 @@ struct rbuv_tcp_s {
   VALUE cb_on_close;
   VALUE cb_on_connection;
   VALUE cb_on_read;
-  VALUE cbs_on_write;
+  VALUE requests;
   VALUE cb_on_connect;
 };
 typedef struct rbuv_tcp_s rbuv_tcp_t;
@@ -33,7 +33,7 @@ VALUE rbuv_tcp_alloc(VALUE klass) {
 
   rbuv_tcp = malloc(sizeof(*rbuv_tcp));
   rbuv_handle_alloc((rbuv_handle_t *)rbuv_tcp);
-  rbuv_tcp->cbs_on_write = Qnil;
+  rbuv_tcp->requests = rb_ary_new();
   rbuv_tcp->cb_on_connection = Qnil;
   rbuv_tcp->cb_on_read = Qnil;
   rbuv_tcp->cb_on_connect = Qnil;
@@ -45,7 +45,7 @@ void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp) {
   assert(rbuv_tcp);
   RBUV_DEBUG_LOG_DETAIL("rbuv_tcp: %p, uv_handle: %p", rbuv_tcp, rbuv_tcp->uv_handle);
   rbuv_handle_mark((rbuv_handle_t *)rbuv_tcp);
-  rb_gc_mark(rbuv_tcp->cbs_on_write);
+  rb_gc_mark(rbuv_tcp->requests);
   rb_gc_mark(rbuv_tcp->cb_on_connection);
   rb_gc_mark(rbuv_tcp->cb_on_read);
   rb_gc_mark(rbuv_tcp->cb_on_connect);

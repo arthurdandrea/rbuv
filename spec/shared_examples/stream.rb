@@ -14,6 +14,20 @@ shared_examples Rbuv::Stream do
       loop.run
     end
 
+    it "returs a request" do
+      write_req = subject.write "string" do |error|
+        raise error if error
+      end
+      expect(write_req).to be_a_kind_of(Rbuv::Stream::WriteRequest)
+    end
+
+    it "can't be canceled" do
+      write_req = subject.write "string" do |error|
+        raise error if error
+      end
+      expect { write_req.cancel }.to raise_error Rbuv::Error, /invalid argument/i
+    end
+
     it "requires a argument" do
       expect {
         subject.write { }

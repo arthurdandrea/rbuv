@@ -15,6 +15,8 @@
 #include "rbuv_handle.h"
 #include "rbuv_loop.h"
 #include "rbuv_timer.h"
+#include "rbuv_request.h"
+#include "rbuv_write.h"
 #include "rbuv_stream.h"
 #include "rbuv_tcp.h"
 #include "rbuv_signal.h"

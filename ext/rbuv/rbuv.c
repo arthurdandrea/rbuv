@@ -25,6 +25,9 @@ void Init_rbuv() {
   Init_rbuv_prepare();
   Init_rbuv_check();
   Init_rbuv_async();
+
+  Init_rbuv_request();
+  Init_rbuv_write();
 }
 
 /* Document-module: Rbuv
