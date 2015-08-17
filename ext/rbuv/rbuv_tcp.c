@@ -24,7 +24,6 @@ static void rbuv_tcp_mark(rbuv_tcp_t *rbuv_tcp);
 static void rbuv_tcp_free(rbuv_tcp_t *rbuv_tcp);
 
 /* Private methods */
-static VALUE rbuv_tcp_extractname(struct sockaddr* sockname, int namelen);
 static void rbuv_tcp_on_connect(uv_connect_t *uv_connect, int status);
 static void rbuv_tcp_on_connect_no_gvl(rbuv_tcp_on_connect_arg_t *arg);
 
@@ -177,7 +176,7 @@ static VALUE rbuv_tcp_getpeername(VALUE self) {
   int namelen = sizeof peername;
   RBUV_CHECK_UV_RETURN(uv_tcp_getpeername(rbuv_tcp->uv_handle, &peername,
                                           &namelen));
-  return rbuv_tcp_extractname(&peername, namelen);
+  return rbuv_util_extractname(&peername, namelen);
 }
 
 static VALUE rbuv_tcp_getsockname(VALUE self) {
@@ -187,7 +186,7 @@ static VALUE rbuv_tcp_getsockname(VALUE self) {
   int namelen = sizeof sockname;
   RBUV_CHECK_UV_RETURN(uv_tcp_getsockname(rbuv_tcp->uv_handle, &sockname,
                                           &namelen));
-  return rbuv_tcp_extractname(&sockname, namelen);
+  return rbuv_util_extractname(&sockname, namelen);
 }
 
 /*
@@ -343,30 +342,6 @@ void rbuv_tcp_on_connect_no_gvl(rbuv_tcp_on_connect_arg_t *arg) {
     error = Qnil;
   }
   rb_funcall(on_connect, id_call, 2, tcp, error);
-}
-
-VALUE rbuv_tcp_extractname(struct sockaddr* sockname, int namelen) {
-  int addr_type;
-  VALUE ip;
-  ushort *port;
-  char *ip_ptr = malloc(sizeof(char) * namelen);
-  if (sockname->sa_family == AF_INET6) {
-    struct sockaddr_in6 sockname_in6 = *(struct sockaddr_in6*) sockname;
-    port = &sockname_in6.sin6_port;
-    uv_ip6_name(&sockname_in6, ip_ptr, namelen);
-  } else if (sockname->sa_family == AF_INET) {
-    struct sockaddr_in sockname_in = *(struct sockaddr_in*) sockname;
-    port = &sockname_in.sin_port;
-    uv_ip4_name(&sockname_in, ip_ptr, namelen);
-  } else {
-    free(ip_ptr); // free before jumping out of here
-    rb_raise(eRbuvError, "unexpected error");
-    return Qnil; // to satisfy compilers
-  }
-  ip = rb_str_new_cstr(ip_ptr);
-  free(ip_ptr);
-
-  return rb_ary_new3(2, ip, UINT2NUM(ntohs(*port)));
 }
 
 void Init_rbuv_tcp() {
