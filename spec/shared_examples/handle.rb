@@ -5,11 +5,9 @@ shared_examples Rbuv::Handle do
     it { is_expected.to respond_to(:loop) }
 
     context "when the handle is closed" do
-      around do |example|
-        subject.close do
-          example.run
-        end
-        loop.run
+      before do
+        subject.close
+        loop.run_nowait until subject.closed?
       end
 
       it "return nil" do

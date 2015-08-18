@@ -21,11 +21,9 @@ module Helpers
   def it_raise_error_when_closed
     method = /^#([a-zA-Z][a-zA-Z0-9]*[\?\!]?)$/.match(description)[1]
     context "when handle is closed" do
-      around do |example|
-        subject.close do
-          example.run
-        end
-        loop.run
+      before do
+        subject.close
+        loop.run_nowait until subject.closed?
       end
 
       it "raise Rbuv::Error" do
