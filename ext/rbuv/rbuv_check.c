@@ -51,6 +51,7 @@ VALUE rbuv_check_initialize(int argc, VALUE *argv, VALUE self) {
   VALUE loop;
   rbuv_check_t *rbuv_check;
   rbuv_loop_t *rbuv_loop;
+  int uv_ret;
 
   rb_scan_args(argc, argv, "01", &loop);
   if (loop == Qnil) {
@@ -61,9 +62,16 @@ VALUE rbuv_check_initialize(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(self, rbuv_check_t, rbuv_check);
 
   rbuv_check->uv_handle = malloc(sizeof(*rbuv_check->uv_handle));
-  uv_check_init(rbuv_loop->uv_handle, rbuv_check->uv_handle);
-  rbuv_check->uv_handle->data = (void *)self;
-  return self;
+  uv_ret = uv_check_init(rbuv_loop->uv_handle, rbuv_check->uv_handle);
+  if (uv_ret < 0) {
+    rbuv_check->uv_handle->data = NULL;
+    free(rbuv_check->uv_handle);
+    rbuv_check->uv_handle = NULL;
+    rb_raise(eRbuvError, "%s", uv_strerror(uv_ret));
+  } else {
+    rbuv_check->uv_handle->data = (void *)self;
+    return self;
+  }
 }
 
 /*
