@@ -18,6 +18,7 @@
 #include "rbuv_request.h"
 #include "rbuv_write.h"
 #include "rbuv_shutdown.h"
+#include "rbuv_getaddrinfo.h"
 #include "rbuv_stream.h"
 #include "rbuv_tcp.h"
 #include "rbuv_signal.h"

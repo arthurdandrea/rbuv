@@ -29,6 +29,7 @@ void Init_rbuv() {
   Init_rbuv_request();
   Init_rbuv_write();
   Init_rbuv_shutdown();
+  Init_rbuv_getaddrinfo();
 }
 
 /* Document-module: Rbuv
