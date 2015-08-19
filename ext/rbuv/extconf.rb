@@ -1,8 +1,8 @@
 require 'mkmf'
 require 'rbconfig'
-
-$CFLAGS << " -std=c99 "
-
+$CFLAGS.gsub! "-Wno-error=shorten-64-to-32", ""
+# $CFLAGS << " -Wdeclaration-after-statement "
+MakeMakefile::CONFIG["CC"] = "gcc-4.6"
 dir_config('uv')
 if have_library('uv', 'uv_run', ['uv.h'])
   have_header('ruby/thread.h')

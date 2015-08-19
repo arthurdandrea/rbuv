@@ -88,8 +88,9 @@ static VALUE rbuv_getaddrinfo_on_getaddrinfo_no_gvl2(VALUE args) {
     rb_raise(eRbuvError, "%s", uv_strerror(arg->status));
     return Qnil;
   } else {
+    struct addrinfo *ptr;
     VALUE result = rb_ary_new();
-    for (struct addrinfo *ptr = arg->res; ptr != NULL; ptr = ptr->ai_next) {
+    for (ptr = arg->res; ptr != NULL; ptr = ptr->ai_next) {
       if (ptr->ai_addrlen != 0) {
         VALUE array[6];
         switch(ptr->ai_family) {
