@@ -9,5 +9,5 @@ rvm:
   - 2.2
   - rbx-2
 script:
-  - "bundle exec rake clean compile -- --with-uv-dir=$PWD/libuv/pkg/lib --with-uv-include=$PWD/libuv/pkg/include"
+  - "bundle exec rake clean compile -- --with-uv-dir=$PWD/libuv/pkg/lib --with-uv-lib=$PWD/libuv/pkg/lib --with-uv-include=$PWD/libuv/pkg/include"
   - "bundle exec rake spec"
