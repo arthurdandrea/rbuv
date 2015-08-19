@@ -1,6 +1,8 @@
 require 'mkmf'
 require 'rbconfig'
 
+$CFLAGS << " -std=c99 "
+
 dir_config('uv')
 if have_library('uv', 'uv_run', ['uv.h'])
   have_header('ruby/thread.h')
