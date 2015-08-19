@@ -10,4 +10,4 @@ rvm:
   - rbx-2
 script:
   - "LD_RUN_PATH=$PWD/libuv/pkg/lib bundle exec rake clean compile -- --with-uv-dir=$PWD/libuv/pkg"
-  - "bundle exec rake spec"
+  - "LD_LIBRARY_PATH=$PWD/libuv/pkg/lib bundle exec rake spec"
