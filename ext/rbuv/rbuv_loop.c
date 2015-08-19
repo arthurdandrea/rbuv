@@ -43,6 +43,7 @@ static void rbuv_walk_unregister_cb(uv_handle_t* uv_handle, void* arg);
 static void rbuv_walk_gc_mark_cb(uv_handle_t *uv_handle, void *arg);
 static VALUE _rbuv_loop_run(VALUE self);
 static void _rbuv_loop_run_no_gvl(rbuv_loop_run_arg_t *arg);
+static VALUE rbuv_loop_get_handles2(rbuv_loop_t *rbuv_loop);
 
 static VALUE rbuv_loop_alloc(VALUE klass) {
   rbuv_loop_t *rbuv_loop;
@@ -199,9 +200,19 @@ static VALUE rbuv_loop_stop(VALUE self) {
 static VALUE rbuv_loop_get_handles(VALUE self) {
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  return rbuv_loop_get_handles2(rbuv_loop);
+}
+
+static VALUE rbuv_loop_get_handles2(rbuv_loop_t *rbuv_loop) {
   VALUE array = rb_ary_new();
   uv_walk(rbuv_loop->uv_handle, rbuv_walk_ary_push_cb, (void *)array);
   return array;
+}
+
+static VALUE rbuv_loop_get_requests(VALUE self) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  return rb_ary_dup(rbuv_loop->requests);
 }
 
 static VALUE rbuv_loop_get_ref_count(VALUE self) {
@@ -211,9 +222,12 @@ static VALUE rbuv_loop_get_ref_count(VALUE self) {
 }
 
 static VALUE rbuv_loop_inspect(VALUE self) {
+  rbuv_loop_t *rbuv_loop;
   const char *cname = rb_obj_classname(self);
-  return rb_sprintf("#<%s:%p @handles=%s>", cname, (void*)self,
-                    RSTRING_PTR(rb_inspect(rbuv_loop_get_handles(self))));
+  Data_Get_Struct(self, rbuv_loop_t, rbuv_loop);
+  return rb_sprintf("#<%s:%p @handles=%s @requests=%s>", cname, (void*)self,
+                    RSTRING_PTR(rb_inspect(rbuv_loop_get_handles2(rbuv_loop))),
+                    RSTRING_PTR(rb_inspect(rbuv_loop->requests)));
 }
 
 static VALUE rbuv_loop_now(VALUE self) {
@@ -303,6 +317,7 @@ void Init_rbuv_loop() {
   rb_define_method(cRbuvLoop, "run_once", rbuv_loop_run_once, 0);
   rb_define_method(cRbuvLoop, "run_nowait", rbuv_loop_run_nowait, 0);
   rb_define_method(cRbuvLoop, "handles", rbuv_loop_get_handles, 0);
+  rb_define_method(cRbuvLoop, "requests", rbuv_loop_get_requests, 0);
   rb_define_method(cRbuvLoop, "ref_count", rbuv_loop_get_ref_count, 0);
   rb_define_method(cRbuvLoop, "inspect", rbuv_loop_inspect, 0);
   rb_define_method(cRbuvLoop, "now", rbuv_loop_now, 0);
