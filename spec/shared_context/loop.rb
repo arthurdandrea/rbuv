@@ -1,5 +1,6 @@
 shared_context Rbuv::Loop do
   let(:loop) { Rbuv::Loop.new }
+  before { GC.start }
   after { loop.dispose }
   subject { described_class.new(loop) }
 
