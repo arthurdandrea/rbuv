@@ -61,6 +61,7 @@ static VALUE rbuv_loop_alloc(VALUE klass) {
   }
   rbuv_loop->is_default = 0;
   rbuv_loop->run_mode = Qnil;
+  rbuv_loop->requests = rb_ary_new();
 
   loop = Data_Wrap_Struct(klass, rbuv_loop_mark, rbuv_loop_free, rbuv_loop);
   rbuv_loop->uv_handle->data = (void *)loop;
@@ -79,6 +80,7 @@ static void rbuv_loop_mark(rbuv_loop_t *rbuv_loop) {
                         (VALUE)rbuv_loop->uv_handle->data);
   uv_walk(rbuv_loop->uv_handle, rbuv_walk_gc_mark_cb, NULL);
   rb_gc_mark(rbuv_loop->run_mode); // TODO: should it really mark?
+  rb_gc_mark(rbuv_loop->requests);
 }
 
 static void rbuv_loop_free(rbuv_loop_t *rbuv_loop) {
@@ -105,6 +107,7 @@ VALUE rbuv_loop_s_default(VALUE klass) {
     rbuv_loop->uv_handle = uv_default_loop();
     rbuv_loop->is_default = 1;
     rbuv_loop->run_mode = Qnil;
+    rbuv_loop->requests = rb_ary_new();
 
     loop = Data_Wrap_Struct(klass, rbuv_loop_mark, rbuv_loop_free, rbuv_loop);
     rbuv_loop->uv_handle->data = (void *)loop;
@@ -278,6 +281,17 @@ VALUE _rbuv_loop_run(VALUE self) {
 
 void _rbuv_loop_run_no_gvl(rbuv_loop_run_arg_t *arg) {
   uv_run(arg->loop, arg->mode);
+}
+
+void rbuv_loop_register_request(VALUE loop, VALUE request) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
+  rb_ary_push(rbuv_loop->requests, request);
+}
+void rbuv_loop_unregister_request(VALUE loop, VALUE request) {
+  rbuv_loop_t *rbuv_loop;
+  Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
+  rbuv_ary_delete_same_object(rbuv_loop->requests, request);
 }
 
 void Init_rbuv_loop() {

@@ -5,6 +5,7 @@ require 'fiber'
 
 describe Rbuv::GetaddrinfoRequest do
   include_context Rbuv::Loop
+
   let(:expected_result) {
     expected_result = Socket.getaddrinfo("google.com", "ftp")
     expected_result.each do |arr|
@@ -19,6 +20,17 @@ describe Rbuv::GetaddrinfoRequest do
     subject = Rbuv::GetaddrinfoRequest.new("google.com", "ftp", loop) do |result, error|
       block.call(result, error)
     end
+    loop.run
+  end
+
+  it "is not garbage collected" do
+    block = double("block")
+    expect(block).to receive(:call).once.with(expected_result, nil)
+    subject = Rbuv::GetaddrinfoRequest.new("google.com", "ftp", loop) do |result, error|
+      block.call(result, error)
+    end
+    subject = nil
+    GC.start
     loop.run
   end
 end

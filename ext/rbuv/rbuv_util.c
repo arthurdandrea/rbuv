@@ -61,3 +61,13 @@ void rbuv_run_callback(VALUE callback, VALUE (* proc)(ANYARGS), VALUE args) {
   VALUE result_arr = rb_rescue(rbuv_run_callback_begin, (VALUE)&arg, rbuv_run_callback_rescue, Qnil);
   rb_funcall(callback, id_call, 2, rb_ary_entry(result_arr, 0), rb_ary_entry(result_arr, 1));
 }
+
+void rbuv_ary_delete_same_object(VALUE ary, VALUE obj) {
+  long i;
+  for (i = 0; i < RARRAY_LEN(ary); i++) {
+    if (rb_ary_entry(ary, i) == obj) {
+      rb_ary_delete_at(ary, i);
+      break;
+    }
+  }
+}

@@ -1,4 +1,5 @@
 #include "rbuv_getaddrinfo.h"
+
 typedef struct {
   uv_getaddrinfo_t* uv_req;
   int status;
@@ -58,6 +59,7 @@ static VALUE rbuv_getaddrinfo_initialize(int argc, VALUE *argv, VALUE self) {
   } else {
     rbuv_getaddrinfo->uv_req->data = (void *)self;
     rbuv_getaddrinfo->cb_on_getaddrinfo = rb_block_proc();
+    rbuv_loop_register_request(loop, self);
   }
   return self;
 }
@@ -123,6 +125,9 @@ static void rbuv_getaddrinfo_on_getaddrinfo_no_gvl(rbuv_getaddrinfo_on_getaddrin
   rbuv_getaddrinfo->cb_on_getaddrinfo = Qnil;
   rbuv_run_callback(cb_on_getaddrinfo, rbuv_getaddrinfo_on_getaddrinfo_no_gvl2, (VALUE)arg);
   uv_freeaddrinfo(arg->res);
+  rbuv_loop_unregister_request((VALUE)arg->uv_req->loop->data, request);
+  free(rbuv_getaddrinfo->uv_req);
+  rbuv_getaddrinfo->uv_req = NULL;
 }
 
 void Init_rbuv_getaddrinfo() {

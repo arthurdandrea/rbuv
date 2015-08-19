@@ -42,7 +42,6 @@ static void rbuv_stream_on_connection(uv_stream_t *uv_stream, int status);
 static void rbuv_stream_on_connection_no_gvl(rbuv_stream_on_connection_arg_t *arg);
 static void rbuv_stream_on_shutdown(uv_shutdown_t *uv_req, int status);
 static void rbuv_stream_on_shutdown_no_gvl(rbuv_stream_on_shutdown_arg_t *uv_stream);
-static void rbuv_ary_delete_same_object(VALUE ary, VALUE obj);
 
 /* @overload listen(backlog)
  *   Listen for incomining connections
@@ -425,16 +424,6 @@ void rbuv_stream_on_shutdown_no_gvl(rbuv_stream_on_shutdown_arg_t *arg) {
     error = Qnil;
   }
   rb_funcall(rbuv_shutdown->cb_on_shutdown, id_call, 1, error);
-}
-
-void rbuv_ary_delete_same_object(VALUE ary, VALUE obj) {
-  long i;
-  for (i = 0; i < RARRAY_LEN(ary); i++) {
-    if (rb_ary_entry(ary, i) == obj) {
-      rb_ary_delete_at(ary, i);
-      break;
-    }
-  }
 }
 
 void Init_rbuv_stream() {
