@@ -15,6 +15,7 @@ describe Rbuv::GetaddrinfoRequest do
   }
 
   it "works" do
+    pending "so far it only works on OS X" unless RUBY_PLATFORM.downcase.include? 'darwin'
     block = double("block")
     expect(block).to receive(:call).once.with(expected_result, nil)
     subject = Rbuv::GetaddrinfoRequest.new("google.com", "ftp", loop) do |result, error|
@@ -25,7 +26,7 @@ describe Rbuv::GetaddrinfoRequest do
 
   it "is not garbage collected" do
     block = double("block")
-    expect(block).to receive(:call).once.with(expected_result, nil)
+    expect(block).to receive(:call).once.with(kind_of(Array), nil)
     subject = Rbuv::GetaddrinfoRequest.new("google.com", "ftp", loop) do |result, error|
       block.call(result, error)
     end
