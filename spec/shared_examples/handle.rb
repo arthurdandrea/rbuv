@@ -22,11 +22,27 @@ shared_examples Rbuv::Handle do
     end
   end
 
+  context "#ref?" do
+    it { is_expected.to respond_to(:ref?) }
+
+    it "returns the ref state" do
+      subject.ref
+      expect(subject.ref?).to be true
+      subject.unref
+      expect(subject.ref?).to be false
+    end
+  end
+
   context "#ref" do
     it { is_expected.to respond_to(:ref) }
 
     it "return self" do
       expect(subject.ref).to be subject
+    end
+
+    it "change #ref?" do
+      subject.unref
+      expect{ subject.ref }.to change{ subject.ref? }.from(false).to(true)
     end
 
     it_raise_error_when_closed
@@ -37,6 +53,11 @@ shared_examples Rbuv::Handle do
 
     it "return self" do
       expect(subject.unref).to be subject
+    end
+
+    it "change #ref?" do
+      subject.ref
+      expect{ subject.unref }.to change{ subject.ref? }.from(true).to(false)
     end
 
     it_raise_error_when_closed

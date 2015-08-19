@@ -113,6 +113,12 @@ static VALUE rbuv_handle_unref(VALUE self) {
   return self;
 }
 
+static VALUE rbuv_handle_has_ref(VALUE self) {
+  rbuv_handle_t *rbuv_handle;
+  Data_Get_Handle_Struct(self, rbuv_handle_t, rbuv_handle);
+  return uv_has_ref(rbuv_handle->uv_handle) ? Qtrue : Qfalse;
+}
+
 /*
  * Request handle to be closed.
  *
@@ -227,6 +233,7 @@ void Init_rbuv_handle() {
   rb_define_method(cRbuvHandle, "ref", rbuv_handle_ref, 0);
   rb_define_method(cRbuvHandle, "unref", rbuv_handle_unref, 0);
   rb_define_method(cRbuvHandle, "close", rbuv_handle_close, 0);
+  rb_define_method(cRbuvHandle, "ref?", rbuv_handle_has_ref, 0);
   rb_define_method(cRbuvHandle, "active?", rbuv_handle_is_active, 0);
   rb_define_method(cRbuvHandle, "closing?", rbuv_handle_is_closing, 0);
   rb_define_method(cRbuvHandle, "closed?", rbuv_handle_is_closed, 0);
