@@ -25,7 +25,7 @@ module Rbuv
       self.handles.each do |handle|
         handle.close unless handle.closing?
       end
-      run
+      run_nowait
       raise RuntimeError unless self.handles.empty?
       self
     end
