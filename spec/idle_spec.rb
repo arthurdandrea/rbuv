@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'shared_examples/handle'
 require 'shared_context/loop'
 
-describe Rbuv::Idle, focus: true do
+describe Rbuv::Idle do
   include_context Rbuv::Loop
   it_should_behave_like Rbuv::Handle
 
