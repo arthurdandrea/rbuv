@@ -18,6 +18,27 @@ module Rbuv
       Signal.new(self)
     end
 
+    # Poll for new events once. Note that this function blocks if there are no
+    # pending events.
+    # @yield [loop] If the block is passed, calls it right before the first loop
+    #     iteration.
+    # @yieldparam loop the loop itself
+    # @return [self] itself
+    def run_once(&block)
+      run(:once, &block)
+    end
+
+    # Poll for new events once but don't block if there are no
+    # pending events.
+    #
+    # @yield [loop] If the block is passed, calls it right before the first loop
+    #     iteration.
+    # @yieldparam loop the loop itself
+    # @return [self] itself
+    def run_nowait(&block)
+      run(:nowait, &block)
+    end
+
     # Tries to close every handle associated with this loop. It may call {#run}.
     # @return [self] itself
     def dispose
