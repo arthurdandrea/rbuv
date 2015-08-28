@@ -27,6 +27,7 @@
 #include "rbuv_check.h"
 #include "rbuv_async.h"
 #include "rbuv_util.h"
+#include "rbuv_idle.h"
 
 extern ID id_call;
 
