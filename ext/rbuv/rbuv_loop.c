@@ -81,7 +81,6 @@ static void rbuv_loop_mark(rbuv_loop_t *rbuv_loop) {
                         rbuv_loop, rbuv_loop->uv_handle,
                         (VALUE)rbuv_loop->uv_handle->data);
   uv_walk(rbuv_loop->uv_handle, rbuv_walk_gc_mark_cb, NULL);
-  rb_gc_mark(rbuv_loop->run_mode); // TODO: should it really mark?
   rb_gc_mark(rbuv_loop->requests);
 }
 
