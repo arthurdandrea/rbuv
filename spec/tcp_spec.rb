@@ -64,7 +64,7 @@ describe Rbuv::Tcp, :type => :handle do
       loop.run do
         begin
           subject.bind '127.0.0.1', 60000
-          subject.listen(10) { Rbuv.stop_loop }
+          subject.listen(10) { }
 
           expect(port_in_use?(60000)).to be true
         ensure
