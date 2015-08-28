@@ -130,7 +130,8 @@ static VALUE _rbuv_loop_after_run(VALUE self) {
   return self;
 }
 /*
- * @overload run(run_mode=:default)
+ * @api private
+ * @overload _run(run_mode=:default)
  *   Runs the event loop.
  *
  *   If +run_mode+ is +:default+ Runs the event loop until the reference count
@@ -143,9 +144,6 @@ static VALUE _rbuv_loop_after_run(VALUE self) {
  *   there are no pending events.
  *
  *   @param run_mode [:default,:once,:nowait] the run mode
- *   @yield If the block is passed, calls it right before the first loop
- *     iteration.
- *   @yieldparam loop [self] the loop itself
  *   @return [self] itself
  */
 static VALUE rbuv_loop_run(int argc, VALUE *argv, VALUE self) {
@@ -272,9 +270,6 @@ VALUE _rbuv_loop_run(VALUE self) {
   } else {
     arg.mode = UV_RUN_DEFAULT; // TODO: raise error? better implementation?
   }
-  if (rb_block_given_p()) {
-    rb_yield(self);
-  }
 #ifdef HAVE_RB_THREAD_CALL_WITHOUT_GVL
   rb_thread_call_without_gvl((rbuv_rb_blocking_function_t)_rbuv_loop_run_no_gvl,
                              &arg, RUBY_UBF_IO, 0);
@@ -309,7 +304,7 @@ void Init_rbuv_loop() {
   cRbuvLoop = rb_define_class_under(mRbuv, "Loop", rb_cObject);
   rb_define_alloc_func(cRbuvLoop, rbuv_loop_alloc);
 
-  rb_define_method(cRbuvLoop, "run", rbuv_loop_run, -1);
+  rb_define_method(cRbuvLoop, "_run", rbuv_loop_run, -1);
   rb_define_method(cRbuvLoop, "stop", rbuv_loop_stop, 0);
   rb_define_method(cRbuvLoop, "handles", rbuv_loop_get_handles, 0);
   rb_define_method(cRbuvLoop, "requests", rbuv_loop_get_requests, 0);
