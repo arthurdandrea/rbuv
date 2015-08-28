@@ -32,7 +32,10 @@ module Rbuv
         next_tick_callbacks.each do |callback|
           callback.call(self)
         end
-        @next_tick_handle.stop if @next_tick_callbacks.empty?
+        if @next_tick_callbacks.empty?
+          @next_tick_handle.close
+          @next_tick_handle = nil
+        end
       end unless @next_tick_handle.active?
       @next_tick_callbacks ||= []
       @next_tick_callbacks << block

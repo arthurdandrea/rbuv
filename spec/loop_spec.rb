@@ -66,33 +66,85 @@ describe Rbuv::Loop do
     end
   end
 
-  context "#run" do
-    it "returns self" do
-      expect(subject.run).to be(subject)
-    end
-
-    it "runs the passed block" do
-      on_run = double
-      expect(on_run).to receive(:call).once
-      subject.run do
-        on_run.call
+  shared_examples "#run" do |&block|
+    context "when no block is passed" do
+      it "returns self" do
+        expect(run).to be(subject)
       end
-    end
 
-    it "does not leave any open handles" do
-      subject.run do
+      it "does not leave any open handles" do
+        run
         open_handles = subject.handles.delete_if { |handle| handle.closing? }
         expect(open_handles).to eq([])
       end
     end
 
-    it "passes the own loop to the block" do
-      on_run = double
-      expect(on_run).to receive(:call).once.with(subject)
-      subject.run do |*args|
-        on_run.call(*args)
+    context "when a block is passed" do
+      it "returns self" do
+        expect(run { }).to be(subject)
+      end
+
+      it "does not leave any open handles " do
+        on_run = spy("Rbuv::Loop#run callback")
+        run do |*args|
+          on_run.call(*args)
+        end
+        expect(on_run).to have_received(:call).once
+        open_handles = subject.handles.delete_if { |handle| handle.closing? }
+        expect(open_handles).to eq([])
+      end
+
+      it "runs the passed block" do
+        on_run = spy("Rbuv::Loop#run callback")
+        run do |*args|
+          on_run.call(*args)
+        end
+        expect(on_run).to have_received(:call).once
+      end
+
+      it "passes the own loop to the block" do
+        on_run = spy("Rbuv::Loop#run callback")
+        run do |*args|
+          on_run.call(*args)
+        end
+        expect(on_run).to have_received(:call).once.with(subject)
       end
     end
+  end
+
+  context "#run_once" do
+    def run(&block)
+      subject.run_once(&block)
+    end
+    include_examples "#run"
+  end
+
+  context "#run_nowait" do
+    def run(&block)
+      subject.run_nowait(&block)
+    end
+    include_examples "#run"
+  end
+
+  context "#run(:nowait)" do
+    def run(&block)
+      subject.run(:nowait, &block)
+    end
+    include_examples "#run"
+  end
+
+  context "#run(:once)" do
+    def run(&block)
+      subject.run(:once, &block)
+    end
+    include_examples "#run"
+  end
+
+  context "#run" do
+    def run(&block)
+      subject.run(&block)
+    end
+    include_examples "#run"
   end
 
   context "#now" do
