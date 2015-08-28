@@ -25,4 +25,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", ">= 2.99"
   spec.add_development_dependency "yard"
   spec.add_development_dependency "concurrent-ruby"
+  spec.add_development_dependency "mini_portile"
 end

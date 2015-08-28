@@ -1,7 +1,5 @@
 language: ruby
 sudo: false
-before_install:
-  - ./install-libuv.sh
 rvm:
   - 1.9.3
   - 2.0.0
@@ -9,5 +7,5 @@ rvm:
   - 2.2
   - rbx-2
 script:
-  - "bundle exec rake clean compile -- --with-uv-dir=$PWD/libuv/pkg/lib --with-uv-lib=$PWD/libuv/pkg/lib --with-uv-include=$PWD/libuv/pkg/include"
+  - "bundle exec rake libuv compile"
   - "bundle exec rake spec"
