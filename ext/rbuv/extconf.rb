@@ -2,7 +2,7 @@ require 'mkmf'
 require 'rbconfig'
 
 dir_config('uv')
-if have_library('uv', 'uv_run', ['uv.h'])
+if have_library('uv', 'uv_version', ['uv.h'])
   have_header('ruby/thread.h')
   have_func('rb_thread_call_without_gvl', 'ruby/thread.h')
 
