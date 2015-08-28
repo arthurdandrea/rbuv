@@ -11,7 +11,7 @@ desc 'Run tests'
 task :default => [:spec]
 
 task :libuv do
-  MiniPortileWithAutogen.new("libuv", ENV["LIBUV_VERSION"] || "1.7.1")).tap do |recipe|
+  MiniPortileWithAutogen.new("libuv", ENV["LIBUV_VERSION"] || "1.7.3")).tap do |recipe|
     recipe.files = ["https://github.com/libuv/libuv/archive/v#{recipe.version}.tar.gz"]
     recipe.target = File.join(File.dirname(__FILE__), "ports")
     recipe.configure_options << "--disable-shared"
