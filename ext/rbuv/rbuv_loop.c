@@ -53,9 +53,7 @@ static VALUE rbuv_loop_alloc(VALUE klass) {
 
   rbuv_loop = malloc(sizeof(*rbuv_loop));
   rbuv_loop->uv_handle = malloc(sizeof(*rbuv_loop->uv_handle));
-  RBUV_DEBUG_LOG_DETAIL("rbuv_loop: %p, uv_handle: %p", rbuv_loop, rbuv_loop->uv_handle);
   uv_ret = uv_loop_init(rbuv_loop->uv_handle);
-  RBUV_DEBUG_LOG_DETAIL("uv_ret: %d", uv_ret);
   if (uv_ret < 0) {
     free(rbuv_loop->uv_handle);
     rbuv_loop->uv_handle = NULL;
@@ -292,13 +290,11 @@ void _rbuv_loop_run_no_gvl(rbuv_loop_run_arg_t *arg) {
 }
 
 void rbuv_loop_register_request(VALUE loop, VALUE request) {
-  RBUV_LOG("loop=%s request=%s", RSTRING_PTR(rb_inspect(loop)), RSTRING_PTR(rb_inspect(request)));
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   rb_ary_push(rbuv_loop->requests, request);
 }
 void rbuv_loop_unregister_request(VALUE loop, VALUE request) {
-  RBUV_LOG("loop=%s request=%s", RSTRING_PTR(rb_inspect(loop)), RSTRING_PTR(rb_inspect(request)));
   rbuv_loop_t *rbuv_loop;
   Data_Get_Struct(loop, rbuv_loop_t, rbuv_loop);
   rbuv_ary_delete_same_object(rbuv_loop->requests, request);
